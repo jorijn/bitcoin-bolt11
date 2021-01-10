@@ -1,0 +1,13 @@
+{
+    "name": "jorijn/bitcoin-bolt11",
+    "description": "A library for encoding and decoding lightning network payment requests as defined in BOLT #11.",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Jorijn Schrijvershof",
+            "email": "jorijn@jorijn.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
