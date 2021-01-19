@@ -36,6 +36,7 @@
   "require": {
     "php": "^7.3",
     "ext-bcmath": "*",
+    "ext-gmp": "*",
     "bitwasp/bech32": "^0.0.1",
     "bitwasp/bitcoin": "^1.0"
   }
