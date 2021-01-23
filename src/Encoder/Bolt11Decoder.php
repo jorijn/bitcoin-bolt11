@@ -13,8 +13,12 @@ use BitWasp\Bitcoin\Crypto\Hash;
 use BitWasp\Buffertools\Buffer;
 use BitWasp\Buffertools\BufferInterface;
 use BitWasp\Buffertools\Buffertools;
-use Jorijn\Bitcoin\Bolt11\Exception\Bolt11DecodeException;
+use Jorijn\Bitcoin\Bolt11\Exception\IncorrectBolt11InvoiceException;
+use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureDoesNotMatchPayeePubkeyDecodeException;
+use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
+use Jorijn\Bitcoin\Bolt11\Exception\UnknownFallbackAddressVersionException;
+use Jorijn\Bitcoin\Bolt11\Exception\UnknownNetworkVersionException;
 
 /**
  * This class decodes BOLT11 payment requests into plain PHP array data.
@@ -68,16 +72,16 @@ class Bolt11Decoder
     public const NAME_UNKNOWN_TAG = 'unknownTag';
 
     public const TAG_CODES = [
-        'payment_hash' => 1,
-        'description' => 13,
-        'payee_node_key' => 19,
-        'purpose_commit_hash' => 23,
-        'expire_time' => 6,
-        'min_final_cltv_expiry' => 24,
-        'fallback_address' => 9,
-        'routing_info' => 3,
-        'secret' => 16,
-//        'features' => 5, TODO
+        'payment_hash' => 1, // p
+        'description' => 13, // d
+        'payee_node_key' => 19, // n
+        'purpose_commit_hash' => 23,  // h
+        'expire_time' => 6, // x
+        'min_final_cltv_expiry' => 24, // c
+        'fallback_address' => 9, // f
+        'routing_info' => 3, // r
+        'secret' => 16, //
+        // 'features' => 5, // not supported
     ];
 
     /** @var string[] */
@@ -105,15 +109,18 @@ class Bolt11Decoder
         $this->tagParsers[24] = [$this, 'wordsToIntBE']; // default: 9
         $this->tagParsers[9] = [$this, 'fallbackAddressParser'];
         $this->tagParsers[3] = [$this, 'routingInfoParser']; // for extra routing info (private etc.)
-//        $this->tagParsers[5] = [$this, 'featureParser']; // TODO
+        // $this->tagParsers[5] = [$this, 'featureParser']; // parsing of features is currently unsupported
     }
 
-    public function decode(string $paymentRequest)
+    /**
+     * TODO: reduce complexity, split up in multiple functions.
+     */
+    public function decode(string $paymentRequest): array
     {
         [$prefix, $words] = decodeRaw($paymentRequest);
 
         if (0 !== strpos($prefix, 'ln')) {
-            throw new Bolt11DecodeException('data does not appear to be a bolt11 invoice');
+            throw new IncorrectBolt11InvoiceException('data does not appear to be a bolt11 invoice');
         }
 
         // signature is always 104 words on the end
@@ -130,7 +137,7 @@ class Bolt11Decoder
         // get remaining signature buffer after extracting recovery flag
         $signatureBuffer = $signatureBuffer->slice(0, -1);
         if (!(in_array($recoveryID, [0, 1, 2, 3], true)) || 64 !== $signatureBuffer->getSize()) {
-            throw new Bolt11DecodeException('signature is missing or incorrect');
+            throw new SignatureIncorrectOrMissingException('signature is missing or incorrect');
         }
 
         // without reverse lookups, can't say that the multiplier at the end must
@@ -145,7 +152,7 @@ class Bolt11Decoder
         }
 
         if (!$prefixMatches) {
-            throw new Bolt11DecodeException('not a proper lightning payment request');
+            throw new IncorrectBolt11InvoiceException('not a proper lightning payment request');
         }
 
         $bech32Prefix = $prefixMatches[1];
@@ -160,7 +167,7 @@ class Bolt11Decoder
                 $coinNetwork = self::SIM_NETWORK;
                 break;
             default:
-                throw new Bolt11DecodeException('unknown network for invoice');
+                throw new UnknownNetworkVersionException('unknown network for invoice');
         }
 
         $value = $prefixMatches[2] ?? null;
@@ -188,18 +195,32 @@ class Bolt11Decoder
 
         $tags = [];
         while (!empty($words)) {
-            $tagCode = (string) $words[0];
-            $tagName = $this->tagNames[$tagCode] ?? self::NAME_UNKNOWN_TAG;
-            $parser = $this->tagParsers[$tagCode] ?? $this->getUnknownParser($tagCode);
-            $words = array_slice($words, 1);
+            try {
+                $tagCode = (string) $words[0];
+                $tagName = $this->tagNames[$tagCode] ?? self::NAME_UNKNOWN_TAG;
+                $parser = $this->tagParsers[$tagCode] ?? $this->getUnknownParser($tagCode);
+                $words = array_slice($words, 1);
 
-            $tagLength = $this->wordsToIntBE(array_slice($words, 0, 2));
-            $words = array_slice($words, 2);
+                $tagLength = $this->wordsToIntBE(array_slice($words, 0, 2));
+                $words = array_slice($words, 2);
 
-            $tagWords = array_slice($words, 0, $tagLength);
-            $words = array_slice($words, $tagLength);
+                $tagWords = array_slice($words, 0, $tagLength);
+                $words = array_slice($words, $tagLength);
 
-            $tags[] = ['tagName' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
+                if (52 !== $tagLength && in_array((int) $tagCode, [1, 23, 16], true)) {
+                    // MUST skip p, h, s fields that do NOT have data_lengths of 52.
+                    continue;
+                }
+
+                if (53 !== $tagLength && 19 === (int) $tagCode) {
+                    // MUST skip n fields that do NOT have data_length 53.
+                    continue;
+                }
+
+                $tags[] = ['tagName' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
+            } catch (UnknownFallbackAddressVersionException $exception) {
+                // allowed: reader MUST skip over an f field with unknown version
+            }
         }
 
         $timeExpireDate = $timeExpireDateString = null;
@@ -231,21 +252,18 @@ class Bolt11Decoder
         }
 
         $finalResult = [
-            'paymentRequest' => $paymentRequest,
-            'complete' => true,
             'prefix' => $prefix,
-            'wordsTemp' => encode('temp', $wordsWithoutSignature + $signatureWords),
             'network' => $coinNetwork,
             'satoshis' => $satoshis,
-            'millisatoshis' => $millisatoshis,
+            'milli_satoshis' => $millisatoshis,
             'timestamp' => $timestamp,
-            'timestampString' => $timestampString,
-            'payeeNodeKey' => $sigPubkey->getHex(),
+            'timestamp_string' => $timestampString,
+            'payee_node_key' => $sigPubkey->getHex(),
             'signature' => $signatureBuffer->getHex(),
-            'recoveryFlag' => $recoveryID,
+            'recovery_flag' => $recoveryID,
             'tags' => $tags,
-            '_payReqHash' => $payReqHash->getHex(),
-            '_toSign' => $toSign->getHex(),
+            '_payment_request_hash' => $payReqHash->getHex(),
+            '_message_to_sign' => $toSign->getHex(),
         ];
 
         if ($removeSatoshis ?? false) {
@@ -253,11 +271,13 @@ class Bolt11Decoder
         }
 
         if (null !== $timeExpireDate) {
-            $finalResult['timeExpireDate'] = $timeExpireDate;
-            $finalResult['timeExpireDateString'] = $timeExpireDateString;
+            $finalResult['expiry_timestamp'] = $timeExpireDate;
+            $finalResult['expiry_datetime'] = $timeExpireDateString;
         }
 
         ksort($finalResult);
+
+//        print_r($finalResult);
 
         return $finalResult;
     }
@@ -301,7 +321,7 @@ class Bolt11Decoder
         $milliSatoshis = $this->hrpToMillisat($hrpString);
 
         if ('0.0000000000' === bcmod($milliSatoshis, '1000.0000000000')) {
-            throw new Bolt11DecodeException('amount is outside of valid range');
+            throw new InvalidAmountException('amount is outside of valid range');
         }
 
         return bcdiv($milliSatoshis, '1000.0000000000');
@@ -315,13 +335,13 @@ class Bolt11Decoder
             $divisor = substr($hrpString, -1);
             $value = substr($hrpString, 0, -1);
         } elseif (preg_match('/^[^munp0-9]$/', substr($hrpString, -1))) {
-            throw new Bolt11DecodeException('not a valid multiplier for the amount');
+            throw new InvalidAmountException('not a valid multiplier for the amount');
         } else {
             $value = $hrpString;
         }
 
         if (!preg_match('/^\d+$/', $value)) {
-            throw new Bolt11DecodeException('not a valid human readable amount');
+            throw new InvalidAmountException('not a valid human readable amount');
         }
 
         $valueBN = bcmul($value, '1', 10);
@@ -331,7 +351,7 @@ class Bolt11Decoder
 
         if ((('p' === $divisor && '0.0000000000' === !bcmod($valueBN, '10.0000000000')) ||
             1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS))) {
-            throw new Bolt11DecodeException('amount is outside valid range');
+            throw new InvalidAmountException('amount is outside valid range');
         }
 
         return $milliSatoshisBN;
@@ -351,7 +371,7 @@ class Bolt11Decoder
     {
         return static function ($words) use ($tagCode) {
             return [
-                'tagCode' => (int) $tagCode,
+                'tag_code' => (int) $tagCode,
                 'words' => encode('unknown', $words),
             ];
         };
@@ -383,14 +403,6 @@ class Bolt11Decoder
         return mb_convert_encoding($this->wordsToBuffer($words)->getBinary(), 'utf-8');
     }
 
-    protected function featureParser(array $words): array
-    {
-        $features = [];
-        $featuresBuffer = $this->wordsToBuffer($words);
-
-        throw new \Exception('incomplete method');
-    }
-
     protected function routingInfoParser(array $words): array
     {
         $routes = [];
@@ -399,9 +411,9 @@ class Bolt11Decoder
         while ($routesBuffer->getSize() > 0) {
             $pubKey = $routesBuffer->slice(0, 33)->getHex(); // 33 bytes
             $shortChannelId = $routesBuffer->slice(33, 8)->getHex(); // 8 bytes
-            $feeBaseMSats = $routesBuffer->slice(41, 4)->getInt(); // 4 bytes
-            $feeProportionalMillionths = $routesBuffer->slice(45, 4)->getInt(); // 4 bytes
-            $cltvExpiryDelta = $routesBuffer->slice(49, 2)->getHex(); // 2 bytes
+            $feeBaseMSats = (int) $routesBuffer->slice(41, 4)->getInt(); // 4 bytes
+            $feeProportionalMillionths = (int) $routesBuffer->slice(45, 4)->getInt(); // 4 bytes
+            $cltvExpiryDelta = (int) $routesBuffer->slice(49, 2)->getInt(); // 2 bytes
 
             $routesBuffer = $routesBuffer->slice(51);
 
@@ -417,7 +429,7 @@ class Bolt11Decoder
         return $routes;
     }
 
-    protected function fallbackAddressParser(array $words): array
+    protected function fallbackAddressParser(array $words, array $network): array
     {
         $version = $words[0];
         $words = array_slice($words, 1);
@@ -434,13 +446,13 @@ class Bolt11Decoder
                 $address = 'xx'; // FIXME:bitcoinjsAddress.toBech32(addressHash, version, network.bech32)
                 break;
             default:
-                throw new Bolt11DecodeException('unknown fallback address version encountered while parsing');
+                throw new UnknownFallbackAddressVersionException('unknown fallback address version ('.$version.') encountered while parsing');
         }
 
         return [
             'code' => $version,
             'address' => $address,
-            'addressHash' => $addressHash->getHex(),
+            'address_hash' => $addressHash->getHex(),
         ];
     }
 }
