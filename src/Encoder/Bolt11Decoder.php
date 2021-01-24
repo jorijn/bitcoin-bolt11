@@ -6,10 +6,17 @@ namespace Jorijn\Bitcoin\Bolt11\Encoder;
 
 use function BitWasp\Bech32\decodeRaw;
 use function BitWasp\Bech32\encode;
+use BitWasp\Bitcoin\Address\PayToPubKeyHashAddress;
+use BitWasp\Bitcoin\Address\ScriptHashAddress;
+use BitWasp\Bitcoin\Address\SegwitAddress;
 use BitWasp\Bitcoin\Bitcoin;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Adapter\EcAdapterInterface;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Impl\PhpEcc\Serializer\Signature\CompactSignatureSerializer;
 use BitWasp\Bitcoin\Crypto\Hash;
+use BitWasp\Bitcoin\Network\NetworkInterface;
+use BitWasp\Bitcoin\Network\Networks\Bitcoin as BitcoinMainnet;
+use BitWasp\Bitcoin\Network\Networks\BitcoinTestnet;
+use BitWasp\Bitcoin\Script\WitnessProgram;
 use BitWasp\Buffertools\Buffer;
 use BitWasp\Buffertools\BufferInterface;
 use BitWasp\Buffertools\Buffertools;
@@ -17,8 +24,10 @@ use Jorijn\Bitcoin\Bolt11\Exception\IncorrectBolt11InvoiceException;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureDoesNotMatchPayeePubkeyDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
+use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownFallbackAddressVersionException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownNetworkVersionException;
+use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
 
 /**
  * This class decodes BOLT11 payment requests into plain PHP array data.
@@ -32,30 +41,6 @@ use Jorijn\Bitcoin\Bolt11\Exception\UnknownNetworkVersionException;
  */
 class Bolt11Decoder
 {
-    public const DEFAULT_NETWORK = [
-        'chain' => 'mainnet',
-        'bech32' => 'bc',
-        'pubKeyHash' => 0x00,
-        'scriptHash' => 0x05,
-        'validWitnessVersions' => [0],
-    ];
-
-    public const TEST_NETWORK = [
-        'chain' => 'testnet',
-        'bech32' => 'tb',
-        'pubKeyHash' => 0x6f,
-        'scriptHash' => 0xc4,
-        'validWitnessVersions' => [0],
-    ];
-
-    public const SIM_NETWORK = [
-        'chain' => 'simnet',
-        'bech32' => 'sb',
-        'pubKeyHash' => 0x3f,
-        'scriptHash' => 0x7b,
-        'validWitnessVersions' => [0],
-    ];
-
     public const DIVISORS = [
         'm' => '1000.0000000000',
         'u' => '1000000.0000000000',
@@ -65,10 +50,6 @@ class Bolt11Decoder
 
     public const MAX_MILLISATS = '2100000000000000000.0000000000';
     public const MILLISATS_PER_BTC = '100000000000.0000000000';
-    public const MILLISATS_PER_MILLIBTC = '100000000.0000000000';
-    public const MILLISATS_PER_MICROBTC = '100000.0000000000';
-    public const MILLISATS_PER_NANOBTC = '100.0000000000';
-    public const PICOBTC_PER_MILLISATS = '10.0000000000';
     public const NAME_UNKNOWN_TAG = 'unknownTag';
 
     public const TAG_CODES = [
@@ -80,8 +61,7 @@ class Bolt11Decoder
         'min_final_cltv_expiry' => 24, // c
         'fallback_address' => 9, // f
         'routing_info' => 3, // r
-        'secret' => 16, //
-        // 'features' => 5, // not supported
+        'secret' => 16,
     ];
 
     /** @var string[] */
@@ -109,15 +89,15 @@ class Bolt11Decoder
         $this->tagParsers[24] = [$this, 'wordsToIntBE']; // default: 9
         $this->tagParsers[9] = [$this, 'fallbackAddressParser'];
         $this->tagParsers[3] = [$this, 'routingInfoParser']; // for extra routing info (private etc.)
-        // $this->tagParsers[5] = [$this, 'featureParser']; // parsing of features is currently unsupported
     }
 
-    /**
-     * TODO: reduce complexity, split up in multiple functions.
-     */
     public function decode(string $paymentRequest): array
     {
-        [$prefix, $words] = decodeRaw($paymentRequest);
+        try {
+            [$prefix, $words] = decodeRaw($paymentRequest);
+        } catch (\Throwable $exception) {
+            throw new UnableToDecodeBech32Exception($exception->getMessage(), $exception->getCode(), $exception);
+        }
 
         if (0 !== strpos($prefix, 'ln')) {
             throw new IncorrectBolt11InvoiceException('data does not appear to be a bolt11 invoice');
@@ -157,14 +137,11 @@ class Bolt11Decoder
 
         $bech32Prefix = $prefixMatches[1];
         switch ($bech32Prefix) {
-            case self::DEFAULT_NETWORK['bech32']:
-                $coinNetwork = self::DEFAULT_NETWORK;
+            case 'bc':
+                $coinNetwork = new BitcoinMainnet();
                 break;
-            case self::TEST_NETWORK['bech32']:
-                $coinNetwork = self::TEST_NETWORK;
-                break;
-            case self::SIM_NETWORK['bech32']:
-                $coinNetwork = self::SIM_NETWORK;
+            case 'tb':
+                $coinNetwork = new BitcoinTestnet();
                 break;
             default:
                 throw new UnknownNetworkVersionException('unknown network for invoice');
@@ -236,10 +213,14 @@ class Bolt11Decoder
 
         $payReqHash = Hash::sha256($toSign);
 
-        // rebuild the signature buffer in a way bit-wasp accepts and knows it (flag+sig), add 27 + 4 (compressed sig).
-        $reformattedSignatureBuffer = Buffertools::concat(Buffer::int($recoveryID + 27 + 4), $signatureBuffer);
-        $compactSignature = (new CompactSignatureSerializer($this->ecAdapter))->parse($reformattedSignatureBuffer);
-        $sigPubkey = $this->ecAdapter->recover($payReqHash, $compactSignature);
+        try {
+            // rebuild the signature buffer in a way bit-wasp accepts and knows it (flag+sig), add 27 + 4 (compressed sig).
+            $reformattedSignatureBuffer = Buffertools::concat(Buffer::int($recoveryID + 27 + 4), $signatureBuffer);
+            $compactSignature = (new CompactSignatureSerializer($this->ecAdapter))->parse($reformattedSignatureBuffer);
+            $sigPubkey = $this->ecAdapter->recover($payReqHash, $compactSignature);
+        } catch (\Throwable $exception) {
+            throw new UnrecoverableSignatureException('unable to recover signature from signed message', $exception->getCode(), $exception);
+        }
 
         if (
             $this->tagsContainItem($tags, $this->tagNames[19])
@@ -274,10 +255,6 @@ class Bolt11Decoder
             $finalResult['expiry_timestamp'] = $timeExpireDate;
             $finalResult['expiry_datetime'] = $timeExpireDateString;
         }
-
-        ksort($finalResult);
-
-//        print_r($finalResult);
 
         return $finalResult;
     }
@@ -330,7 +307,6 @@ class Bolt11Decoder
     public function hrpToMillisat(string $hrpString): string
     {
         $divisor = null;
-
         if (preg_match('/^[munp]$/', substr($hrpString, -1))) {
             $divisor = substr($hrpString, -1);
             $value = substr($hrpString, 0, -1);
@@ -349,7 +325,7 @@ class Bolt11Decoder
             ? bcdiv(bcmul($valueBN, self::MILLISATS_PER_BTC), self::DIVISORS[$divisor])
             : bcmul($valueBN, self::MILLISATS_PER_BTC);
 
-        if ((('p' === $divisor && '0.0000000000' === !bcmod($valueBN, '10.0000000000')) ||
+        if ((('p' === $divisor && '0' !== bcmod($valueBN, '10.0000000000')) ||
             1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS))) {
             throw new InvalidAmountException('amount is outside valid range');
         }
@@ -429,7 +405,7 @@ class Bolt11Decoder
         return $routes;
     }
 
-    protected function fallbackAddressParser(array $words, array $network): array
+    protected function fallbackAddressParser(array $words, NetworkInterface $network): array
     {
         $version = $words[0];
         $words = array_slice($words, 1);
@@ -437,13 +413,13 @@ class Bolt11Decoder
 
         switch ($version) {
             case 17:
-                $address = 'xx'; // FIXME: bitcoinjsAddress.toBase58Check(addressHash, network.pubKeyHash)
+                $address = (new PayToPubKeyHashAddress($addressHash))->getAddress($network);
                 break;
             case 18:
-                $address = 'xx'; // FIXME:bitcoinjsAddress.toBase58Check(addressHash, network.scriptHash)
+                $address = (new ScriptHashAddress($addressHash))->getAddress($network);
                 break;
             case 0:
-                $address = 'xx'; // FIXME:bitcoinjsAddress.toBech32(addressHash, version, network.bech32)
+                $address = (new SegwitAddress(WitnessProgram::v0($addressHash)))->getAddress($network);
                 break;
             default:
                 throw new UnknownFallbackAddressVersionException('unknown fallback address version ('.$version.') encountered while parsing');

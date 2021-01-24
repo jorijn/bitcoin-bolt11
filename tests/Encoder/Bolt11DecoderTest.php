@@ -6,6 +6,10 @@ namespace Tests\Jorijn\Bitcoin\Bolt11\Encoder;
 
 use BitWasp\Bitcoin\Bitcoin;
 use Jorijn\Bitcoin\Bolt11\Encoder\Bolt11Decoder;
+use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
+use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
+use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
+use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -113,7 +117,7 @@ class Bolt11DecoderTest extends TestCase
                         'purpose_commit_hash' => '3925b6f67e2c340036ed12093dd44e0368df1b6ea26c53dbe4811f58fd5db8c1',
                         'fallback_address' => [
                             'code' => 17,
-                            'address' => 'xx', // FIXME: 'mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP',
+                            'address' => 'mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP',
                             'address_hash' => '3172b5654f6683c8fb146959d347ce303cae4ca7',
                         ],
                     ],
@@ -129,7 +133,7 @@ class Bolt11DecoderTest extends TestCase
                     'tags' => [
                         'fallback_address' => [
                             'code' => 17,
-                            'address' => 'xx', // FIXME: 1RustyRX2oai4EYYDpQGWvEL62BBGqN9T
+                            'address' => '1RustyRX2oai4EYYDpQGWvEL62BBGqN9T',
                             'address_hash' => '04b61f7dc1ea0dc99424464cc4064dc564d91e89',
                         ],
                         'routing_info' => [
@@ -157,7 +161,7 @@ class Bolt11DecoderTest extends TestCase
                     'tags' => [
                         'fallback_address' => [
                             'code' => 18,
-                            'address' => 'xx', // FIXME: 3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX
+                            'address' => '3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX',
                             'address_hash' => '8f55563b9a19f321c211e9b9f38cdf686ea07845',
                         ],
                     ],
@@ -169,7 +173,7 @@ class Bolt11DecoderTest extends TestCase
                     'tags' => [
                         'fallback_address' => [
                             'code' => 0,
-                            'address' => 'xx', // FIXME: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+                            'address' => 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
                             'address_hash' => '751e76e8199196d454941c45d1b3a323f1433bd6',
                         ],
                     ],
@@ -181,7 +185,7 @@ class Bolt11DecoderTest extends TestCase
                     'tags' => [
                         'fallback_address' => [
                             'code' => 0,
-                            'address' => 'xx', // FIXME: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
+                            'address' => 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3',
                             'address_hash' => '1863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262',
                         ],
                     ],
@@ -250,8 +254,43 @@ class Bolt11DecoderTest extends TestCase
      */
     public function providerOfInvalidScenarios(): array
     {
-        // TODO
-        return [];
+        return [
+            'Bech32 checksum is invalid.' => [
+                'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpquwpc4curk03c9wlrswe78q4eyqc7d8d0xqzpuyk0sg5g70me25alkluzd2x62aysf2pyy8edtjeevuv4p2d5p76r4zkmneet7uvyakky2zr4cusd45tftc9c5fh0nnqpnl2jfll544esqchsrnt',
+                'Invalid bech32 checksum',
+                UnableToDecodeBech32Exception::class,
+            ],
+            'Malformed bech32 string (no 1)' => [
+                'pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpquwpc4curk03c9wlrswe78q4eyqc7d8d0xqzpuyk0sg5g70me25alkluzd2x62aysf2pyy8edtjeevuv4p2d5p76r4zkmneet7uvyakky2zr4cusd45tftc9c5fh0nnqpnl2jfll544esqchsrny',
+                'Missing separator character',
+                UnableToDecodeBech32Exception::class,
+            ],
+            'Malformed bech32 string (mixed case)' => [
+                'LNBC2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpquwpc4curk03c9wlrswe78q4eyqc7d8d0xqzpuyk0sg5g70me25alkluzd2x62aysf2pyy8edtjeevuv4p2d5p76r4zkmneet7uvyakky2zr4cusd45tftc9c5fh0nnqpnl2jfll544esqchsrny',
+                'Data contains mixture of higher/lower case characters',
+                UnableToDecodeBech32Exception::class,
+            ],
+            'Signature is not recoverable.' => [
+                'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaxtrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspk28uwq',
+                'unable to recover signature from signed message',
+                UnrecoverableSignatureException::class,
+            ],
+            'String is too short.' => [
+                'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6na6hlh',
+                'signature is missing or incorrect',
+                SignatureIncorrectOrMissingException::class,
+            ],
+            'Invalid multiplier' => [
+                'lnbc2500x1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpujr6jxr9gq9pv6g46y7d20jfkegkg4gljz2ea2a3m9lmvvr95tq2s0kvu70u3axgelz3kyvtp2ywwt0y8hkx2869zq5dll9nelr83zzqqpgl2zg',
+                'not a valid multiplier for the amount',
+                InvalidAmountException::class,
+            ],
+            'Invalid sub-millisatoshi precision.' => [
+                'lnbc2500000001p1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpu7hqtk93pkf7sw55rdv4k9z2vj050rxdr6za9ekfs3nlt5lr89jqpdmxsmlj9urqumg0h9wzpqecw7th56tdms40p2ny9q4ddvjsedzcplva53s',
+                'amount is outside valid range',
+                InvalidAmountException::class,
+            ],
+        ];
     }
 
     /**
@@ -316,6 +355,31 @@ class Bolt11DecoderTest extends TestCase
                 );
             }
         }
+    }
+
+    /**
+     * @covers ::decode
+     * @covers ::initializeTagParsers
+     * @covers ::wordsToBuffer
+     * @covers ::convert
+     * @covers ::hrpToSat
+     * @covers ::hrpToMillisat
+     * @covers ::wordsToIntBE
+     * @covers ::getUnknownParser
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToHex
+     * @covers ::wordsToUtf8
+     * @covers ::routingInfoParser
+     * @covers ::fallbackAddressParser
+     * @dataProvider providerOfInvalidScenarios
+     */
+    public function testInvalidScenarios(string $invoice, string $expectedMessage, string $expectedInstanceOf): void
+    {
+        $this->expectExceptionMessage($expectedMessage);
+        $this->expectException($expectedInstanceOf);
+
+        $this->decoder->decode($invoice);
     }
 
     protected function setUp(): void
