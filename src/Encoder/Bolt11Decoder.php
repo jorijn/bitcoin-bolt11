@@ -12,6 +12,7 @@ use BitWasp\Bitcoin\Address\SegwitAddress;
 use BitWasp\Bitcoin\Bitcoin;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Adapter\EcAdapterInterface;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Impl\PhpEcc\Serializer\Signature\CompactSignatureSerializer;
+use BitWasp\Bitcoin\Crypto\EcAdapter\Key\PublicKeyInterface;
 use BitWasp\Bitcoin\Crypto\Hash;
 use BitWasp\Bitcoin\Network\NetworkInterface;
 use BitWasp\Bitcoin\Network\Networks\Bitcoin as BitcoinMainnet;
@@ -136,17 +137,9 @@ class Bolt11Decoder
         }
 
         $bech32Prefix = $prefixMatches[1];
-        switch ($bech32Prefix) {
-            case 'bc':
-                $coinNetwork = new BitcoinMainnet();
-                break;
-            case 'tb':
-                $coinNetwork = new BitcoinTestnet();
-                break;
-            default:
-                throw new UnknownNetworkVersionException('unknown network for invoice');
-        }
+        $coinNetwork = $this->getNetworkFromPrefix($bech32Prefix);
 
+        // parse the value from hrp
         $value = $prefixMatches[2] ?? null;
         if ($value) {
             $divisor = $prefixMatches[3];
@@ -158,47 +151,19 @@ class Bolt11Decoder
                 $removeSatoshis = true;
             }
 
-            $millisatoshis = (int) $this->hrpToMillisat($value.$divisor);
+            $milliSatoshis = (int) $this->hrpToMillisat($value.$divisor);
         } else {
             $satoshis = null;
-            $millisatoshis = null;
+            $milliSatoshis = null;
         }
 
-        // reminder: left padded 0 bits
+        // reminder: left padded 0 bits, parse the timestamp
         $timestamp = $this->wordsToIntBE(array_slice($words, 0, 7));
         $timestampString = date(\DateTime::ATOM, $timestamp);
-
         $words = array_slice($words, 7); // trim off the left 7 words
 
-        $tags = [];
-        while (!empty($words)) {
-            try {
-                $tagCode = (string) $words[0];
-                $tagName = $this->tagNames[$tagCode] ?? self::NAME_UNKNOWN_TAG;
-                $parser = $this->tagParsers[$tagCode] ?? $this->getUnknownParser($tagCode);
-                $words = array_slice($words, 1);
-
-                $tagLength = $this->wordsToIntBE(array_slice($words, 0, 2));
-                $words = array_slice($words, 2);
-
-                $tagWords = array_slice($words, 0, $tagLength);
-                $words = array_slice($words, $tagLength);
-
-                if (52 !== $tagLength && in_array((int) $tagCode, [1, 23, 16], true)) {
-                    // MUST skip p, h, s fields that do NOT have data_lengths of 52.
-                    continue;
-                }
-
-                if (53 !== $tagLength && 19 === (int) $tagCode) {
-                    // MUST skip n fields that do NOT have data_length 53.
-                    continue;
-                }
-
-                $tags[] = ['tagName' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
-            } catch (UnknownFallbackAddressVersionException $exception) {
-                // allowed: reader MUST skip over an f field with unknown version
-            }
-        }
+        // parse the tags from the available words
+        $tags = $this->parseTagsFromWords($words, $coinNetwork);
 
         $timeExpireDate = $timeExpireDateString = null;
         if ($this->tagsContainItem($tags, $this->tagNames[6])) {
@@ -212,31 +177,13 @@ class Bolt11Decoder
         );
 
         $payReqHash = Hash::sha256($toSign);
-
-        try {
-            // rebuild the signature buffer in a way bit-wasp accepts and knows it (flag+sig), add 27 + 4 (compressed sig).
-            $reformattedSignatureBuffer = Buffertools::concat(Buffer::int($recoveryID + 27 + 4), $signatureBuffer);
-            $compactSignature = (new CompactSignatureSerializer($this->ecAdapter))->parse($reformattedSignatureBuffer);
-            $sigPubkey = $this->ecAdapter->recover($payReqHash, $compactSignature);
-        } catch (\Throwable $exception) {
-            throw new UnrecoverableSignatureException('unable to recover signature from signed message', $exception->getCode(), $exception);
-        }
-
-        if (
-            $this->tagsContainItem($tags, $this->tagNames[19])
-            && $this->tagsItems(
-                $tags,
-                $this->tagNames[19]
-            ) !== $sigPubkey->getHex()
-        ) {
-            throw new SignatureDoesNotMatchPayeePubkeyDecodeException('lightning payment request signature pubkey does not match payee pubkey');
-        }
+        $sigPubkey = $this->extractVerifyPublicKey($recoveryID, $signatureBuffer, $payReqHash, $tags);
 
         $finalResult = [
             'prefix' => $prefix,
             'network' => $coinNetwork,
             'satoshis' => $satoshis,
-            'milli_satoshis' => $millisatoshis,
+            'milli_satoshis' => $milliSatoshis,
             'timestamp' => $timestamp,
             'timestamp_string' => $timestampString,
             'payee_node_key' => $sigPubkey->getHex(),
@@ -293,15 +240,27 @@ class Bolt11Decoder
         return $result;
     }
 
+    protected function getNetworkFromPrefix(string $bech32Prefix): NetworkInterface
+    {
+        switch ($bech32Prefix) {
+            case 'bc':
+                return new BitcoinMainnet();
+            case 'tb':
+                return new BitcoinTestnet();
+            default:
+                throw new UnknownNetworkVersionException('unknown network for invoice');
+        }
+    }
+
     public function hrpToSat(string $hrpString): string
     {
         $milliSatoshis = $this->hrpToMillisat($hrpString);
 
-        if ('0.0000000000' === bcmod($milliSatoshis, '1000.0000000000')) {
+        if ('0.0000000000' === bcmod($milliSatoshis, self::DIVISORS['m'])) {
             throw new InvalidAmountException('amount is outside of valid range');
         }
 
-        return bcdiv($milliSatoshis, '1000.0000000000');
+        return bcdiv($milliSatoshis, self::DIVISORS['m']);
     }
 
     public function hrpToMillisat(string $hrpString): string
@@ -325,8 +284,8 @@ class Bolt11Decoder
             ? bcdiv(bcmul($valueBN, self::MILLISATS_PER_BTC), self::DIVISORS[$divisor])
             : bcmul($valueBN, self::MILLISATS_PER_BTC);
 
-        if ((('p' === $divisor && '0' !== bcmod($valueBN, '10.0000000000')) ||
-            1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS))) {
+        if (('p' === $divisor && '0' !== bcmod($valueBN, '10.0000000000')) ||
+            1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS)) {
             throw new InvalidAmountException('amount is outside valid range');
         }
 
@@ -341,6 +300,41 @@ class Bolt11Decoder
         }
 
         return $total;
+    }
+
+    protected function parseTagsFromWords(array $words, NetworkInterface $coinNetwork): array
+    {
+        $tags = [];
+        while (!empty($words)) {
+            try {
+                $tagCode = (string) $words[0];
+                $tagName = $this->tagNames[$tagCode] ?? self::NAME_UNKNOWN_TAG;
+                $parser = $this->tagParsers[$tagCode] ?? $this->getUnknownParser($tagCode);
+                $words = array_slice($words, 1);
+
+                $tagLength = $this->wordsToIntBE(array_slice($words, 0, 2));
+                $words = array_slice($words, 2);
+
+                $tagWords = array_slice($words, 0, $tagLength);
+                $words = array_slice($words, $tagLength);
+
+                if (52 !== $tagLength && in_array((int) $tagCode, [1, 23, 16], true)) {
+                    // MUST skip p, h, s fields that do NOT have data_lengths of 52.
+                    continue;
+                }
+
+                if (53 !== $tagLength && 19 === (int) $tagCode) {
+                    // MUST skip n fields that do NOT have data_length 53.
+                    continue;
+                }
+
+                $tags[] = ['tagName' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
+            } catch (UnknownFallbackAddressVersionException $exception) {
+                // allowed: reader MUST skip over an f field with unknown version
+            }
+        }
+
+        return $tags;
     }
 
     protected function getUnknownParser(string $tagCode): \Closure
@@ -367,6 +361,34 @@ class Bolt11Decoder
         }
 
         return null;
+    }
+
+    protected function extractVerifyPublicKey(
+        int $recoveryID,
+        BufferInterface $signatureBuffer,
+        BufferInterface $payReqHash,
+        array $tags
+    ): PublicKeyInterface {
+        try {
+            // rebuild the signature buffer in a way bit-wasp accepts and knows it (flag+sig), add 27 + 4 (compressed sig).
+            $reformattedSignatureBuffer = Buffertools::concat(Buffer::int($recoveryID + 27 + 4), $signatureBuffer);
+            $compactSignature = (new CompactSignatureSerializer($this->ecAdapter))->parse($reformattedSignatureBuffer);
+            $sigPubkey = $this->ecAdapter->recover($payReqHash, $compactSignature);
+        } catch (\Throwable $exception) {
+            throw new UnrecoverableSignatureException('unable to recover signature from signed message', $exception->getCode(), $exception);
+        }
+
+        if (
+            $this->tagsContainItem($tags, $this->tagNames[19])
+            && $this->tagsItems(
+                $tags,
+                $this->tagNames[19]
+            ) !== $sigPubkey->getHex()
+        ) {
+            throw new SignatureDoesNotMatchPayeePubkeyDecodeException('lightning payment request signature pubkey does not match payee pubkey');
+        }
+
+        return $sigPubkey;
     }
 
     protected function wordsToHex(array $words): string
