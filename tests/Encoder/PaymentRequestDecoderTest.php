@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Jorijn\Bitcoin\Bolt11\Encoder;
 
 use BitWasp\Bitcoin\Bitcoin;
-use Jorijn\Bitcoin\Bolt11\Encoder\Bolt11Decoder;
+use Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
@@ -13,13 +13,22 @@ use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\Bolt11Decoder
+ * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder
  * @covers ::__construct
+ *
+ * @internal
  */
-class Bolt11DecoderTest extends TestCase
+final class PaymentRequestDecoderTest extends TestCase
 {
-    /** @var Bolt11Decoder */
+    /** @var PaymentRequestDecoder */
     protected $decoder;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->decoder = new PaymentRequestDecoder(Bitcoin::getEcAdapter());
+    }
 
     /**
      * These examples were taken from GitHub.
@@ -294,28 +303,31 @@ class Bolt11DecoderTest extends TestCase
     }
 
     /**
-     * @covers ::decode
-     * @covers ::initializeTagParsers
-     * @covers ::wordsToBuffer
      * @covers ::convert
-     * @covers ::hrpToSat
-     * @covers ::hrpToMillisat
-     * @covers ::wordsToIntBE
+     * @covers ::decode
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
      * @covers ::getUnknownParser
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
      * @covers ::tagsContainItem
      * @covers ::tagsItems
+     * @covers ::wordsToBuffer
      * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
      * @covers ::wordsToUtf8
-     * @covers ::routingInfoParser
-     * @covers ::fallbackAddressParser
      * @dataProvider providerOfSuccessScenarios
      */
-    public function testSuccessScenarios(string $invoice, array $results): void
+    public function testSuccessScenarios(string $invoice, array $expectedResults): void
     {
         $result = $this->decoder->decode($invoice);
 
-        foreach ($results as $expectedKey => $expectedValue) {
-            self::assertArrayHasKey($expectedKey, $result);
+        foreach ($expectedResults as $expectedKey => $expectedValue) {
+            static::assertArrayHasKey($expectedKey, $result);
 
             if ('tags' === $expectedKey) {
                 foreach ($expectedValue as $expectedTag => $expectedTagValue) {
@@ -328,7 +340,7 @@ class Bolt11DecoderTest extends TestCase
 
                         if ($tag['tagName'] === $expectedTag) {
                             $found = true;
-                            self::assertSame(
+                            static::assertSame(
                                 $expectedTagValue,
                                 $tag['data'],
                                 sprintf('tag "%s" does not match expected value', $expectedTag)
@@ -336,19 +348,19 @@ class Bolt11DecoderTest extends TestCase
                         }
                     }
 
-                    self::assertTrue($found);
+                    static::assertTrue($found);
                 }
-            } elseif (is_array($expectedValue)) {
+            } elseif (\is_array($expectedValue)) {
                 foreach ($expectedValue as $expectedSubKey => $expectedSubValue) {
-                    self::assertArrayHasKey($expectedSubKey, $expectedValue);
-                    self::assertSame(
+                    static::assertArrayHasKey($expectedSubKey, $expectedValue);
+                    static::assertSame(
                         $expectedSubValue,
                         $expectedValue[$expectedSubKey],
                         sprintf('"%s.%s" does not match expected value', $expectedKey, $expectedSubKey)
                     );
                 }
             } else {
-                self::assertSame(
+                static::assertSame(
                     $expectedValue,
                     $result[$expectedKey],
                     sprintf('"%s" does not match expected value', $expectedKey)
@@ -358,20 +370,23 @@ class Bolt11DecoderTest extends TestCase
     }
 
     /**
-     * @covers ::decode
-     * @covers ::initializeTagParsers
-     * @covers ::wordsToBuffer
      * @covers ::convert
-     * @covers ::hrpToSat
-     * @covers ::hrpToMillisat
-     * @covers ::wordsToIntBE
+     * @covers ::decode
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
      * @covers ::getUnknownParser
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
      * @covers ::tagsContainItem
      * @covers ::tagsItems
+     * @covers ::wordsToBuffer
      * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
      * @covers ::wordsToUtf8
-     * @covers ::routingInfoParser
-     * @covers ::fallbackAddressParser
      * @dataProvider providerOfInvalidScenarios
      */
     public function testInvalidScenarios(string $invoice, string $expectedMessage, string $expectedInstanceOf): void
@@ -380,12 +395,5 @@ class Bolt11DecoderTest extends TestCase
         $this->expectException($expectedInstanceOf);
 
         $this->decoder->decode($invoice);
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->decoder = new Bolt11Decoder(Bitcoin::getEcAdapter());
     }
 }

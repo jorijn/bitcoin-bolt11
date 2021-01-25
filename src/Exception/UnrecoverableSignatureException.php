@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class UnrecoverableSignatureException extends Bolt11DecodeException
+class UnrecoverableSignatureException extends PaymentRequestDecodeException
 {
 }
