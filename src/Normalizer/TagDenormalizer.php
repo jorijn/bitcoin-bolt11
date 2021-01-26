@@ -51,11 +51,11 @@ class TagDenormalizer
             return $this->denormalizerDataWithSetters(new UnknownTag(), $tag['data']);
         }
 
-        if ('routing_info' === $tag['tagName']) {
+        if (Tag::ROUTING_INFO === $tag['tagName']) {
             $tag['data'] = $this->routingInfoDenormalizer->denormalize($tag['data'], RoutingInfo::class.'[]');
         }
 
-        if ('fallback_address' === $tag['tagName']) {
+        if (Tag::FALLBACK_ADDRESS === $tag['tagName']) {
             $tag['data'] = $this->fallbackAddressDenormalizer->denormalize($tag['data']);
         }
 
