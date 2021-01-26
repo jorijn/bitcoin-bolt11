@@ -31,7 +31,6 @@ RUN apt-get update -y \
     && apt-get install -y libgmp-dev re2c libmhash-dev libmcrypt-dev file \
     && ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/local/include/ \
     && docker-php-ext-install -j$(nproc) gmp bcmath \
-    && docker-php-ext-enable gmp bcmath \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=vendor /app/ /app/
