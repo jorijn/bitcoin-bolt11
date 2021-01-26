@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 ![PHPUnit Tests](https://github.com/Jorijn/bitcoin-bolt11/workflows/PHPUnit%20Tests/badge.svg)
 
-This library aims to be a tool to decode BOLT #11 Payment Requests into usable PHP objects.
+This library aims to be a tool to decode BOLT #11 Payment Requests into usable PHP objects. Currently, only decoding is supported. 
 
 BOLT #11 is a simple, extendable, QR-code-ready protocol for requesting payments over Lightning.
 
