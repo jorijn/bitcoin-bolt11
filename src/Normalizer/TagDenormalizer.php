@@ -47,15 +47,15 @@ class TagDenormalizer
     /** @noinspection PhpIncompatibleReturnTypeInspection */
     protected function denormalizeTag(array $tag): TagInterface
     {
-        if (PaymentRequestDecoder::NAME_UNKNOWN_TAG === $tag['tagName'] ?? null) {
+        if (PaymentRequestDecoder::NAME_UNKNOWN_TAG === $tag['tag_name'] ?? null) {
             return $this->denormalizerDataWithSetters(new UnknownTag(), $tag['data']);
         }
 
-        if (Tag::ROUTING_INFO === $tag['tagName']) {
+        if (Tag::ROUTING_INFO === $tag['tag_name']) {
             $tag['data'] = $this->routingInfoDenormalizer->denormalize($tag['data'], RoutingInfo::class.'[]');
         }
 
-        if (Tag::FALLBACK_ADDRESS === $tag['tagName']) {
+        if (Tag::FALLBACK_ADDRESS === $tag['tag_name']) {
             $tag['data'] = $this->fallbackAddressDenormalizer->denormalize($tag['data']);
         }
 

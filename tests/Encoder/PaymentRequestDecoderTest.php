@@ -333,12 +333,12 @@ final class PaymentRequestDecoderTest extends TestCase
                 foreach ($expectedValue as $expectedTag => $expectedTagValue) {
                     $found = false;
                     foreach ($result['tags'] as $tag) {
-                        if ('unknownTag' === $tag['tagName']) { // support testing unspported tags
-                            $tag['tagName'] = $tag['data']['tag_code'];
+                        if ('unknownTag' === $tag['tag_name']) { // support testing unspported tags
+                            $tag['tag_name'] = $tag['data']['tag_code'];
                             $tag['data'] = $tag['data']['words'];
                         }
 
-                        if ($tag['tagName'] === $expectedTag) {
+                        if ($tag['tag_name'] === $expectedTag) {
                             $found = true;
                             static::assertSame(
                                 $expectedTagValue,

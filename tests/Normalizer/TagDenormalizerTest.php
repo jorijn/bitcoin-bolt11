@@ -53,9 +53,9 @@ final class TagDenormalizerTest extends TestCase
     public function testUnknownTag(): void
     {
         $tag = $this->tagDenormalizer->denormalize([
-            'tagName' => PaymentRequestDecoder::NAME_UNKNOWN_TAG,
+            'tag_name' => PaymentRequestDecoder::NAME_UNKNOWN_TAG,
             'data' => [
-                'tagCode' => $tagCode = random_int(15, 30),
+                'tag_code' => $tagCode = random_int(15, 30),
                 'words' => $words = 'words'.random_int(1000, 2000),
             ],
         ], Tag::class);
@@ -73,7 +73,7 @@ final class TagDenormalizerTest extends TestCase
     {
         $tags = $this->tagDenormalizer->denormalize([
             [
-                'tagName' => $tagName = 'tagName'.random_int(1000, 2000),
+                'tag_name' => $tagName = 'tag_name'.random_int(1000, 2000),
                 'data' => $data = 'data'.random_int(1000, 2000),
             ],
         ], Tag::class.'[]');
@@ -91,7 +91,7 @@ final class TagDenormalizerTest extends TestCase
     public function testRegularDenormalize(): void
     {
         $tag = $this->tagDenormalizer->denormalize([
-            'tagName' => $tagName = 'tagName'.random_int(1000, 2000),
+            'tag_name' => $tagName = 'tag_name'.random_int(1000, 2000),
             'data' => $data = 'data'.random_int(1000, 2000),
         ], Tag::class);
 
@@ -118,7 +118,7 @@ final class TagDenormalizerTest extends TestCase
         ;
 
         $tag = $this->tagDenormalizer->denormalize([
-            'tagName' => Tag::ROUTING_INFO,
+            'tag_name' => Tag::ROUTING_INFO,
             'data' => $inputArray,
         ], Tag::class);
 
@@ -144,7 +144,7 @@ final class TagDenormalizerTest extends TestCase
         ;
 
         $tag = $this->tagDenormalizer->denormalize([
-            'tagName' => Tag::FALLBACK_ADDRESS,
+            'tag_name' => Tag::FALLBACK_ADDRESS,
             'data' => $inputArray,
         ], Tag::class);
 

@@ -330,7 +330,7 @@ class PaymentRequestDecoder
                     continue;
                 }
 
-                $tags[] = ['tagName' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
+                $tags[] = ['tag_name' => $tagName, 'data' => $parser($tagWords, $coinNetwork)];
             } catch (UnknownFallbackAddressVersionException $exception) {
                 // allowed: reader MUST skip over an f field with unknown version
             }
@@ -357,7 +357,7 @@ class PaymentRequestDecoder
     protected function tagsItems(array $tags, string $tagName)
     {
         foreach ($tags as $tag) {
-            if ($tagName === $tag['tagName']) {
+            if ($tagName === $tag['tag_name']) {
                 return $tag['data'] ?? null;
             }
         }
