@@ -28,7 +28,7 @@ FROM php:${PHP_VERSION}-cli
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 RUN apt-get update -y \
-    && apt-get install -y libgmp-dev re2c libmhash-dev libmcrypt-dev file \
+    && apt-get install -y libgmp-dev file \
     && ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/local/include/ \
     && docker-php-ext-install -j$(nproc) gmp bcmath \
     && rm -rf /var/lib/apt/lists/*
