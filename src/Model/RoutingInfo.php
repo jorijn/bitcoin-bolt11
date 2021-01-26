@@ -17,12 +17,12 @@ class RoutingInfo
     /** @var int */
     protected $cltvExpiryDelta;
 
-    public function getPubkey(): string
+    public function getPubKey(): string
     {
         return $this->pubkey;
     }
 
-    public function setPubkey(string $pubkey): void
+    public function setPubKey(string $pubkey): void
     {
         $this->pubkey = $pubkey;
     }
