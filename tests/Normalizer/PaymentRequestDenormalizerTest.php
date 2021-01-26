@@ -15,31 +15,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Normalizer\PaymentRequestDenormalizer
  * @covers ::__construct
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getExpiryDateTime
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getExpiryTimestamp
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getMilliSatoshis
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getNetwork
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getPayeeNodeKey
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getPrefix
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getRecoveryFlag
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getSatoshis
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getSignature
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getTags
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getTimestamp
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::getTimestampDateTime
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setExpiryDateTime
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setExpiryTimestamp
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setMilliSatoshis
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setNetwork
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setPayeeNodeKey
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setPrefix
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setRecoveryFlag
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setSatoshis
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setSignature
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setTags
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setTimestamp
- * @covers \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest::setTimestampString
- * @covers \Jorijn\Bitcoin\Bolt11\Normalizer\DenormalizerTrait::denormalizerDataWithSetters
+ *
+ * @uses \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest
+ * @uses \Jorijn\Bitcoin\Bolt11\Normalizer\DenormalizerTrait
  *
  * @internal
  */

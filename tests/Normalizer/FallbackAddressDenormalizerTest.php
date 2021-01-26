@@ -16,6 +16,9 @@ final class FallbackAddressDenormalizerTest extends TestCase
 {
     /**
      * @covers ::denormalize
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Model\FallbackAddress
+     * @uses \Jorijn\Bitcoin\Bolt11\Normalizer\DenormalizerTrait
      */
     public function testDenormalize(): void
     {

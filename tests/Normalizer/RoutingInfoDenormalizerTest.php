@@ -17,6 +17,10 @@ final class RoutingInfoDenormalizerTest extends TestCase
 {
     /**
      * @covers ::denormalize
+     * @covers ::denormalizeRoutingInfo
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Model\RoutingInfo
+     * @uses \Jorijn\Bitcoin\Bolt11\Normalizer\DenormalizerTrait
      */
     public function testDenormalize()
     {

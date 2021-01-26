@@ -27,7 +27,7 @@ class PaymentRequest
     /** @var int */
     protected $recoveryFlag;
     /** @var TagInterface[] */
-    protected $tags;
+    protected $tags = [];
     /** @var null|int */
     protected $expiryTimestamp;
     /** @var null|\DateTimeInterface */
@@ -138,7 +138,7 @@ class PaymentRequest
 
     public function findTagByName(string $name): ?TagInterface
     {
-        foreach ($this->tags as $tag) {
+        foreach ($this->getTags() as $tag) {
             if ($tag->getTagName() === $name) {
                 return $tag;
             }
