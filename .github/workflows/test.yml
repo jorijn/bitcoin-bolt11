@@ -1,0 +1,24 @@
+name: PHPUnit Tests
+
+on:
+  - push
+
+env:
+  IMAGE_NAME: bitcoin-bolt11
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: [ 7.3, 7.4 ] # 8.0 is not supported yet
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v1
+
+      - name: Run tests on PHP ${{ matrix.php-version }}
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          docker build . --file Dockerfile --build-arg PHP_VERSION=${{ matrix.php-version }} -t $IMAGE_NAME:$VERSION-${{ matrix.php-version }}
+          docker run --rm $IMAGE_NAME:$VERSION-${{ matrix.php-version }} vendor/bin/phpunit --testdox
