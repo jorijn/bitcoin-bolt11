@@ -68,3 +68,7 @@ This library is based on other BOLT #11 libraries from other programming languag
 * https://github.com/lightningnetwork/lnd/blob/master/zpay32/decode.go
 * https://github.com/bitcoinjs/bolt11
 * https://github.com/nievk/bolt11
+
+## CLI tool
+
+There is a CLI tool based on this library. It allows for easy decoding and converting of payment requests into JSON, XML, YAML & CSV. Download and usage here: https://github.com/Jorijn/bitcoin-bolt11-cli
