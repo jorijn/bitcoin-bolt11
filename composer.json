@@ -37,10 +37,10 @@
     }
   },
   "require": {
-    "php": "^7.3",
+    "php": "^7.3|^8.0",
     "ext-bcmath": "*",
     "ext-gmp": "*",
     "bitwasp/bech32": "^0.0.1",
-    "bitwasp/bitcoin": "^1.0"
+    "protonlabs/bitcoin": "1.0.x-dev"
   }
 }
