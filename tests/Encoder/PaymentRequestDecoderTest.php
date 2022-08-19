@@ -61,7 +61,7 @@ final class PaymentRequestDecoderTest extends TestCase
                 'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp',
                 [
                     '_payment_request_hash' => '3cd6ef07744040556e01be64f68fd9e1565fb47d78c42308b1ee005aca5a0d86',
-                    '_message_to_sign' => '6c6e626332353030750b25fe64410d00004080c1014181c20240004080c1014181c20240004080c1014181c202404081a0a189031bab81031b7b33332b2818020f',
+                    '_message_to_sign' => '6c6e626332353030750b25fe64410d00004080c1014181c20240004080c1014181c20240004080c1014181c202404081a0a189031bab81031b7b33332b2818020f00',
                     'prefix' => 'lnbc2500u',
                     'milli_satoshis' => 250000000,
                     'payee_node_key' => '03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad',
@@ -83,7 +83,7 @@ final class PaymentRequestDecoderTest extends TestCase
                 'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpquwpc4curk03c9wlrswe78q4eyqc7d8d0xqzpuyk0sg5g70me25alkluzd2x62aysf2pyy8edtjeevuv4p2d5p76r4zkmneet7uvyakky2zr4cusd45tftc9c5fh0nnqpnl2jfll544esqchsrny',
                 [
                     '_payment_request_hash' => '197a3061f4f333d86669b8054592222b488f3c657a9d3e74f34f586fb3e7931c',
-                    '_message_to_sign' => '6c6e626332353030750b25fe64410d00004080c1014181c20240004080c1014181c20240004080c1014181c202404081a1071c1c571c1d9f1c15df1c1d9f1c15c9018f34ed798020',
+                    '_message_to_sign' => '6c6e626332353030750b25fe64410d00004080c1014181c20240004080c1014181c20240004080c1014181c202404081a1071c1c571c1d9f1c15df1c1d9f1c15c9018f34ed798020f0',
                     'prefix' => 'lnbc2500u',
                     'milli_satoshis' => 250000000,
                     'payee_node_key' => '03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad',
