@@ -160,7 +160,7 @@ class PaymentRequestDecoder
 
         $toSign = Buffertools::concat(
             new Buffer($prefix),
-            $this->wordsToBuffer($wordsWithoutSignature),
+            $this->wordsToBuffer($wordsWithoutSignature, false),
         );
 
         $payReqHash = Hash::sha256($toSign);
