@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of the PHP Bitcoin BOLT11 package.
+ *
+ * (c) Jorijn Schrijvershof <jorijn@jorijn.com>
+ *
+ * This source file is subject to the MIT license that is bundled
+ * with this source code in the file LICENSE.
+ */
+
 namespace Jorijn\Bitcoin\Bolt11\Model;
 
 use BitWasp\Bitcoin\Network\NetworkInterface;
@@ -10,26 +19,37 @@ class PaymentRequest
 {
     /** @var string */
     protected $prefix;
+
     /** @var NetworkInterface */
     protected $network;
+
     /** @var null|int */
     protected $satoshis;
+
     /** @var null|int */
     protected $milliSatoshis;
+
     /** @var int */
     protected $timestamp;
+
     /** @var \DateTimeInterface */
     protected $timestampDateTime;
+
     /** @var string */
     protected $payeeNodeKey;
+
     /** @var string */
     protected $signature;
+
     /** @var int */
     protected $recoveryFlag;
+
     /** @var TagInterface[] */
     protected $tags = [];
+
     /** @var null|int */
     protected $expiryTimestamp;
+
     /** @var null|\DateTimeInterface */
     protected $expiryDateTime;
 

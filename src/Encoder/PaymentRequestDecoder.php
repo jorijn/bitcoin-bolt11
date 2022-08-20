@@ -2,10 +2,20 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of the PHP Bitcoin BOLT11 package.
+ *
+ * (c) Jorijn Schrijvershof <jorijn@jorijn.com>
+ *
+ * This source file is subject to the MIT license that is bundled
+ * with this source code in the file LICENSE.
+ */
+
 namespace Jorijn\Bitcoin\Bolt11\Encoder;
 
 use function BitWasp\Bech32\decodeRaw;
 use function BitWasp\Bech32\encode;
+
 use BitWasp\Bitcoin\Address\PayToPubKeyHashAddress;
 use BitWasp\Bitcoin\Address\ScriptHashAddress;
 use BitWasp\Bitcoin\Address\SegwitAddress;
@@ -67,8 +77,10 @@ class PaymentRequestDecoder
 
     /** @var string[] */
     protected $tagNames = [];
+
     /** @var \Closure[] */
     protected $tagParsers = [];
+
     /** @var EcAdapterInterface */
     protected $ecAdapter;
 
@@ -104,7 +116,7 @@ class PaymentRequestDecoder
 
         // get remaining signature buffer after extracting recovery flag
         $signatureBuffer = $signatureBuffer->slice(0, -1);
-        if (!(\in_array($recoveryID, [0, 1, 2, 3], true)) || 64 !== $signatureBuffer->getSize()) {
+        if (!\in_array($recoveryID, [0, 1, 2, 3], true) || 64 !== $signatureBuffer->getSize()) {
             throw new SignatureIncorrectOrMissingException('signature is missing or incorrect');
         }
 
@@ -132,7 +144,7 @@ class PaymentRequestDecoder
             $divisor = $prefixMatches[3];
 
             try {
-                $satoshis = (int) ($this->hrpToSat($value.$divisor));
+                $satoshis = (int) $this->hrpToSat($value.$divisor);
             } catch (\Throwable $exception) {
                 $satoshis = 0;
                 $removeSatoshis = true;
@@ -160,7 +172,7 @@ class PaymentRequestDecoder
 
         $toSign = Buffertools::concat(
             new Buffer($prefix),
-            $this->wordsToBuffer($wordsWithoutSignature),
+            $this->wordsToBuffer($wordsWithoutSignature, false),
         );
 
         $payReqHash = Hash::sha256($toSign);

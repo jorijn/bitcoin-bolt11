@@ -2,31 +2,49 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of the PHP Bitcoin BOLT11 package.
+ *
+ * (c) Jorijn Schrijvershof <jorijn@jorijn.com>
+ *
+ * This source file is subject to the MIT license that is bundled
+ * with this source code in the file LICENSE.
+ */
+
 namespace Jorijn\Bitcoin\Bolt11\Model;
 
 class Tag implements TagInterface
 {
     /** @var string */
     public const PAYMENT_HASH = 'payment_hash';
+
     /** @var string */
     public const DESCRIPTION = 'description';
+
     /** @var string */
     public const PAYEE_NODE_KEY = 'payee_node_key';
+
     /** @var string */
     public const PURPOSE_COMMIT_HASH = 'purpose_commit_hash';
+
     /** @var string */
     public const EXPIRE_TIME = 'expire_time';
+
     /** @var string */
     public const MIN_FINAL_CLTV_EXPIRY = 'min_final_cltv_expiry';
+
     /** @var string */
     public const FALLBACK_ADDRESS = 'fallback_address';
+
     /** @var string */
     public const ROUTING_INFO = 'routing_info';
+
     /** @var string */
     public const SECRET = 'secret';
 
     /** @var string */
     protected $tagName;
+
     /** @var mixed */
     protected $data;
 
