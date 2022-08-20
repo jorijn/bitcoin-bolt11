@@ -23,7 +23,7 @@
   "prefer-stable": true,
   "minimum-stability": "stable",
   "require-dev": {
-    "friendsofphp/php-cs-fixer": "^2.17",
+    "friendsofphp/php-cs-fixer": "^3.10",
     "phpunit/phpunit": "^9"
   },
   "autoload": {
@@ -37,7 +37,7 @@
     }
   },
   "require": {
-    "php": "^7.3|^8.0",
+    "php": "^7.4|^8.0",
     "ext-bcmath": "*",
     "ext-gmp": "*",
     "bitwasp/bech32": "^0.0.1",
