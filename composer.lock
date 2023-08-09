@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "97cfe4b4896759e5c1fb0b6557f2943a",
+    "content-hash": "82384fc2de877b0bbda5f1930632d62f",
     "packages": [
         {
             "name": "bitwasp/bech32",
@@ -51,54 +51,6 @@
                 "source": "https://github.com/Bit-Wasp/bech32/tree/more-tests"
             },
             "time": "2018-02-05T22:23:47+00:00"
-        },
-        {
-            "name": "bitwasp/buffertools",
-            "version": "v0.5.7",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Bit-Wasp/buffertools-php.git",
-                "reference": "133746d0b514e0016d8479b54aa97475405a9f1f"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Bit-Wasp/buffertools-php/zipball/133746d0b514e0016d8479b54aa97475405a9f1f",
-                "reference": "133746d0b514e0016d8479b54aa97475405a9f1f",
-                "shasum": ""
-            },
-            "require": {
-                "php-64bit": ">=7.0.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^6.0",
-                "squizlabs/php_codesniffer": "~2.0"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "BitWasp\\Buffertools\\": "src/Buffertools/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Thomas Kerin",
-                    "homepage": "https://thomaskerin.io"
-                },
-                {
-                    "name": "Ruben de Vries",
-                    "email": "ruben@rubensayshi.com"
-                }
-            ],
-            "description": "Toolbox for working with binary and hex data. Similar to NodeJS Buffer.",
-            "support": {
-                "issues": "https://github.com/Bit-Wasp/buffertools-php/issues",
-                "source": "https://github.com/Bit-Wasp/buffertools-php/tree/v0.5.7"
-            },
-            "time": "2020-01-17T21:31:49+00:00"
         },
         {
             "name": "composer/semver",
@@ -183,24 +135,24 @@
         },
         {
             "name": "fgrosse/phpasn1",
-            "version": "v2.4.0",
+            "version": "v2.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fgrosse/PHPASN1.git",
-                "reference": "eef488991d53e58e60c9554b09b1201ca5ba9296"
+                "reference": "42060ed45344789fb9f21f9f1864fc47b9e3507b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fgrosse/PHPASN1/zipball/eef488991d53e58e60c9554b09b1201ca5ba9296",
-                "reference": "eef488991d53e58e60c9554b09b1201ca5ba9296",
+                "url": "https://api.github.com/repos/fgrosse/PHPASN1/zipball/42060ed45344789fb9f21f9f1864fc47b9e3507b",
+                "reference": "42060ed45344789fb9f21f9f1864fc47b9e3507b",
                 "shasum": ""
             },
             "require": {
-                "php": "~7.1.0 || ~7.2.0 || ~7.3.0 || ~7.4.0 || ~8.0.0 || ~8.1.0"
+                "php": "^7.1 || ^8.0"
             },
             "require-dev": {
                 "php-coveralls/php-coveralls": "~2.0",
-                "phpunit/phpunit": "^6.3 || ^7.0 || ^8.0"
+                "phpunit/phpunit": "^7.0 || ^8.0 || ^9.0"
             },
             "suggest": {
                 "ext-bcmath": "BCmath is the fallback extension for big integer calculations",
@@ -252,9 +204,10 @@
             ],
             "support": {
                 "issues": "https://github.com/fgrosse/PHPASN1/issues",
-                "source": "https://github.com/fgrosse/PHPASN1/tree/v2.4.0"
+                "source": "https://github.com/fgrosse/PHPASN1/tree/v2.5.0"
             },
-            "time": "2021-12-11T12:41:06+00:00"
+            "abandoned": true,
+            "time": "2022-12-19T11:08:26+00:00"
         },
         {
             "name": "lastguest/murmurhash",
@@ -431,40 +384,39 @@
         },
         {
             "name": "protonlabs/bitcoin",
-            "version": "1.0.x-dev",
+            "version": "v1.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ProtonMail/bitcoin-php.git",
-                "reference": "eec844967e5a0d3b4c108d8a6ad0ad9594f9bb50"
+                "reference": "8b8112c7ded158a258c7a877b8f5853ea7e1e05a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ProtonMail/bitcoin-php/zipball/eec844967e5a0d3b4c108d8a6ad0ad9594f9bb50",
-                "reference": "eec844967e5a0d3b4c108d8a6ad0ad9594f9bb50",
+                "url": "https://api.github.com/repos/ProtonMail/bitcoin-php/zipball/8b8112c7ded158a258c7a877b8f5853ea7e1e05a",
+                "reference": "8b8112c7ded158a258c7a877b8f5853ea7e1e05a",
                 "shasum": ""
             },
             "require": {
                 "bitwasp/bech32": "^0.0.1",
-                "bitwasp/buffertools": "^0.5.0",
                 "composer/semver": "^1.4.0|^3.2.0",
                 "lastguest/murmurhash": "^v2.0.0",
                 "mdanter/ecc": "^0.5.0|^1.0.0",
                 "php-64bit": ">=7.0",
-                "pleonasm/merkle-tree": "~1.0.0"
+                "pleonasm/merkle-tree": "~1.0.0",
+                "protonlabs/buffertools": "^0.5.0"
             },
             "require-dev": {
                 "bitwasp/bitcoinconsensus": "v3.0.0",
                 "bitwasp/secp256k1-php": "^v0.2.0",
                 "ext-json": "*",
                 "nbobtc/bitcoind-php": "v2.0.2",
-                "phpunit/phpunit": "^5.4.0",
+                "phpunit/phpunit": "^6.0.0",
                 "squizlabs/php_codesniffer": "^2.0.0"
             },
             "suggest": {
                 "ext-bitcoinconsensus": "The bitcoinconsensus library for safest possible script verification",
                 "ext-secp256k1": "The secp256k1 library for fast and safe elliptic curve operations"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "files": [
@@ -488,9 +440,60 @@
             "description": "PHP Bitcoin library with functions for transactions, signatures, serialization, Random/Deterministic ECDSA keys, blocks, RPC bindings",
             "homepage": "https://github.com/bit-wasp/bitcoin-php",
             "support": {
-                "source": "https://github.com/ProtonMail/bitcoin-php/tree/1.0"
+                "source": "https://github.com/ProtonMail/bitcoin-php/tree/v1.0.7"
             },
-            "time": "2021-09-20T17:01:50+00:00"
+            "time": "2023-07-17T08:26:32+00:00"
+        },
+        {
+            "name": "protonlabs/buffertools",
+            "version": "v0.5.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ProtonMail/buffertools-php.git",
+                "reference": "9bb64c124f93f3e373e61806d1e10d8feb0d5751"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ProtonMail/buffertools-php/zipball/9bb64c124f93f3e373e61806d1e10d8feb0d5751",
+                "reference": "9bb64c124f93f3e373e61806d1e10d8feb0d5751",
+                "shasum": ""
+            },
+            "require": {
+                "php-64bit": ">=7.0.0"
+            },
+            "replace": {
+                "bitwasp/buffertools": "^0.5.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "v0.9.x",
+                "phpunit/phpunit": "^6.0",
+                "squizlabs/php_codesniffer": "~2.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "BitWasp\\Buffertools\\": "src/Buffertools/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Thomas Kerin",
+                    "homepage": "https://thomaskerin.io"
+                },
+                {
+                    "name": "Ruben de Vries",
+                    "email": "ruben@rubensayshi.com"
+                }
+            ],
+            "description": "Toolbox for working with binary and hex data. Similar to NodeJS Buffer.",
+            "support": {
+                "source": "https://github.com/ProtonMail/buffertools-php/tree/v0.5.8"
+            },
+            "time": "2023-07-17T08:19:22+00:00"
         }
     ],
     "packages-dev": [
@@ -4393,9 +4396,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "protonlabs/bitcoin": 20
-    },
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
@@ -4404,5 +4405,5 @@
         "ext-gmp": "*"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.1.0"
+    "plugin-api-version": "2.3.0"
 }

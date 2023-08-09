@@ -41,6 +41,6 @@
     "ext-bcmath": "*",
     "ext-gmp": "*",
     "bitwasp/bech32": "^0.0.1",
-    "protonlabs/bitcoin": "1.0.x-dev"
+    "protonlabs/bitcoin": "^1.0"
   }
 }
