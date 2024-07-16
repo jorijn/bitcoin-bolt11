@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [v1.0.1] - 2024-07-16
+
+### Added
+* Added PHP 8.2 & 8.3 to the test matrix.
+* Bumped `protonlabs/bitcoin` to stable. Thanks @fr0N73ND3r.
+
 ## [v1.0.0] - 2022-08-20
 The project has been around for nearly two years now, so I'm bumping the version to v1.0.0. 
 
