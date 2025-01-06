@@ -167,8 +167,12 @@ class PaymentRequestDecoder
         $timeExpireDate = $timeExpireDateString = null;
         if ($this->tagsContainItem($tags, $this->tagNames[6])) {
             $timeExpireDate = $timestamp + $this->tagsItems($tags, $this->tagNames[6]);
-            $timeExpireDateString = date(\DateTime::ATOM, $timeExpireDate);
+        } else {
+            // Default is 3600 (1 hour) if not specified.
+            $timeExpireDate = $timestamp + 3600;
         }
+
+        $timeExpireDateString = date(\DateTime::ATOM, $timeExpireDate);
 
         $toSign = Buffertools::concat(
             new Buffer($prefix),

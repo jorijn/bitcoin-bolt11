@@ -49,6 +49,13 @@ final class PaymentRequestDecoderTest extends TestCase
     public function providerOfSuccessScenarios(): array
     {
         return [
+            'Invoice without expiry value' => [
+                'lnbc20u1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksp5m6kmam774klwlh4dhmhaatd7al02m0h0m6kmam774klwlh4dhmhs9qypqqqxqrrsscqpfck3fd5pdf7ermq4ajdr7eawzxzzspr8f2fqtw8kewj5f57l4uexxwgdy3xftzqm8a0yh7rnt6wsuzay8tqauq0cufzmamfu0y8zplhqpgpuvpj',
+                [
+                    'prefix' => 'lnbc20u',
+                    'expiry_timestamp' => (1496314658 + 3600)
+                ],
+            ],
             'Please make a donation of any amount using payment_hash 0001020304050607080900010203040506070809000102030405060708090102 to me @03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad' => [
                 'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w',
                 [
