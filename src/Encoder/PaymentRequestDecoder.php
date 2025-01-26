@@ -13,9 +13,6 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Encoder;
 
-use function BitWasp\Bech32\decodeRaw;
-use function BitWasp\Bech32\encode;
-
 use BitWasp\Bitcoin\Address\PayToPubKeyHashAddress;
 use BitWasp\Bitcoin\Address\ScriptHashAddress;
 use BitWasp\Bitcoin\Address\SegwitAddress;
@@ -39,6 +36,9 @@ use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownFallbackAddressVersionException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownNetworkVersionException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
+
+use function BitWasp\Bech32\decodeRaw;
+use function BitWasp\Bech32\encode;
 
 /**
  * This class decodes BOLT11 payment requests into plain PHP array data.
@@ -76,15 +76,14 @@ class PaymentRequestDecoder
     ];
 
     /** @var string[] */
-    protected $tagNames = [];
+    private array $tagNames;
 
     /** @var \Closure[] */
-    protected $tagParsers = [];
+    private array $tagParsers = [];
 
-    /** @var EcAdapterInterface */
-    protected $ecAdapter;
+    private EcAdapterInterface $ecAdapter;
 
-    public function __construct(EcAdapterInterface $ecAdapter = null)
+    public function __construct(?EcAdapterInterface $ecAdapter = null)
     {
         $this->ecAdapter = $ecAdapter ?? Bitcoin::getEcAdapter();
         $this->tagNames = array_flip(self::TAG_CODES);
