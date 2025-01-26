@@ -23,26 +23,16 @@ class TagDenormalizer
 {
     use DenormalizerTrait;
 
-    /** @var FallbackAddressDenormalizer */
-    protected $fallbackAddressDenormalizer;
+    private FallbackAddressDenormalizer $fallbackAddressDenormalizer;
 
-    /** @var RoutingInfoDenormalizer */
-    protected $routingInfoDenormalizer;
+    private RoutingInfoDenormalizer $routingInfoDenormalizer;
 
     public function __construct(
-        FallbackAddressDenormalizer $fallbackAddressDenormalizer = null,
-        RoutingInfoDenormalizer $routingInfoDenormalizer = null
+        ?FallbackAddressDenormalizer $fallbackAddressDenormalizer = null,
+        ?RoutingInfoDenormalizer $routingInfoDenormalizer = null
     ) {
-        if (null === $fallbackAddressDenormalizer) {
-            $fallbackAddressDenormalizer = new FallbackAddressDenormalizer();
-        }
-
-        if (null === $routingInfoDenormalizer) {
-            $routingInfoDenormalizer = new RoutingInfoDenormalizer();
-        }
-
-        $this->fallbackAddressDenormalizer = $fallbackAddressDenormalizer;
-        $this->routingInfoDenormalizer = $routingInfoDenormalizer;
+        $this->fallbackAddressDenormalizer = $fallbackAddressDenormalizer ?? new FallbackAddressDenormalizer();
+        $this->routingInfoDenormalizer = $routingInfoDenormalizer ?? new RoutingInfoDenormalizer();
     }
 
     public function denormalize(array $data, $type)
