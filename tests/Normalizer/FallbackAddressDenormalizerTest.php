@@ -43,8 +43,8 @@ final class FallbackAddressDenormalizerTest extends TestCase
             'addressHash' => $addressHash,
         ]);
 
-        static::assertSame($code, $fallbackAddress->getCode());
-        static::assertSame($address, $fallbackAddress->getAddress());
-        static::assertSame($addressHash, $fallbackAddress->getAddressHash());
+        self::assertSame($code, $fallbackAddress->getCode());
+        self::assertSame($address, $fallbackAddress->getAddress());
+        self::assertSame($addressHash, $fallbackAddress->getAddressHash());
     }
 }
