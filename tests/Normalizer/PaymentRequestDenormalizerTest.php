@@ -23,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Normalizer\PaymentRequestDenormalizer
+ *
  * @covers ::__construct
  *
  * @uses \Jorijn\Bitcoin\Bolt11\Model\PaymentRequest
@@ -33,10 +34,10 @@ use PHPUnit\Framework\TestCase;
 final class PaymentRequestDenormalizerTest extends TestCase
 {
     /** @var PaymentRequestDenormalizer */
-    protected $denormalizer;
+    private $denormalizer;
 
     /** @var MockObject|TagDenormalizer */
-    protected $tagDenormalizer;
+    private $tagDenormalizer;
 
     protected function setUp(): void
     {
@@ -65,7 +66,7 @@ final class PaymentRequestDenormalizerTest extends TestCase
         ];
 
         $this->tagDenormalizer
-            ->expects(static::once())
+            ->expects(self::once())
             ->method('denormalize')
             ->with($tags, Tag::class.'[]')
             ->willReturn($denormalizedTags)
@@ -73,14 +74,14 @@ final class PaymentRequestDenormalizerTest extends TestCase
 
         $paymentRequest = $this->denormalizer->denormalize($data);
 
-        static::assertSame($prefix, $paymentRequest->getPrefix());
-        static::assertSame($network, $paymentRequest->getNetwork());
-        static::assertSame($timestamp, $paymentRequest->getTimestamp());
-        static::assertSame($timestampString, $paymentRequest->getTimestampDateTime()->format(\DateTime::ATOM));
-        static::assertSame($payeeNodeKey, $paymentRequest->getPayeeNodeKey());
-        static::assertSame($signature, $paymentRequest->getSignature());
-        static::assertSame($recoveryFlag, $paymentRequest->getRecoveryFlag());
-        static::assertSame($denormalizedTags, $paymentRequest->getTags());
+        self::assertSame($prefix, $paymentRequest->getPrefix());
+        self::assertSame($network, $paymentRequest->getNetwork());
+        self::assertSame($timestamp, $paymentRequest->getTimestamp());
+        self::assertSame($timestampString, $paymentRequest->getTimestampDateTime()->format(\DateTime::ATOM));
+        self::assertSame($payeeNodeKey, $paymentRequest->getPayeeNodeKey());
+        self::assertSame($signature, $paymentRequest->getSignature());
+        self::assertSame($recoveryFlag, $paymentRequest->getRecoveryFlag());
+        self::assertSame($denormalizedTags, $paymentRequest->getTags());
     }
 
     /**
@@ -107,24 +108,24 @@ final class PaymentRequestDenormalizerTest extends TestCase
 
         $paymentRequest = $this->denormalizer->denormalize($data);
 
-        static::assertSame($prefix, $paymentRequest->getPrefix());
-        static::assertSame($network, $paymentRequest->getNetwork());
-        static::assertSame($satoshis, $paymentRequest->getSatoshis());
-        static::assertSame($milliSatoshis, $paymentRequest->getMilliSatoshis());
-        static::assertSame($timestamp, $paymentRequest->getTimestamp());
-        static::assertSame($payeeNodeKey, $paymentRequest->getPayeeNodeKey());
-        static::assertSame($signature, $paymentRequest->getSignature());
-        static::assertSame($recoveryFlag, $paymentRequest->getRecoveryFlag());
-        static::assertSame($expiryTimestamp, $paymentRequest->getExpiryTimestamp());
+        self::assertSame($prefix, $paymentRequest->getPrefix());
+        self::assertSame($network, $paymentRequest->getNetwork());
+        self::assertSame($satoshis, $paymentRequest->getSatoshis());
+        self::assertSame($milliSatoshis, $paymentRequest->getMilliSatoshis());
+        self::assertSame($timestamp, $paymentRequest->getTimestamp());
+        self::assertSame($payeeNodeKey, $paymentRequest->getPayeeNodeKey());
+        self::assertSame($signature, $paymentRequest->getSignature());
+        self::assertSame($recoveryFlag, $paymentRequest->getRecoveryFlag());
+        self::assertSame($expiryTimestamp, $paymentRequest->getExpiryTimestamp());
 
-        static::assertSame(
+        self::assertSame(
             $timestampString,
             null !== $timestampString
                 ? $paymentRequest->getTimestampDateTime()->format(\DateTime::ATOM)
                 : $paymentRequest->getTimestampDateTime()
         );
 
-        static::assertSame(
+        self::assertSame(
             $expiryDateTime,
             null !== $expiryDateTime
                 ? $paymentRequest->getExpiryDateTime()->format(\DateTime::ATOM)

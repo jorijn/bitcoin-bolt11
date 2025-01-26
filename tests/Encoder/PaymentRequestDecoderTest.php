@@ -23,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder
+ *
  * @covers ::__construct
  *
  * @internal
@@ -46,14 +47,14 @@ final class PaymentRequestDecoderTest extends TestCase
      *
      * @return array[]
      */
-    public function providerOfSuccessScenarios(): array
+    public static function provideSuccessScenariosCases(): iterable
     {
         return [
             'Invoice without expiry value' => [
                 'lnbc20u1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksp5m6kmam774klwlh4dhmhaatd7al02m0h0m6kmam774klwlh4dhmhs9qypqqqxqrrsscqpfck3fd5pdf7ermq4ajdr7eawzxzzspr8f2fqtw8kewj5f57l4uexxwgdy3xftzqm8a0yh7rnt6wsuzay8tqauq0cufzmamfu0y8zplhqpgpuvpj',
                 [
                     'prefix' => 'lnbc20u',
-                    'expiry_timestamp' => (1496314658 + 3600)
+                    'expiry_timestamp' => (1496314658 + 3600),
                 ],
             ],
             'Please make a donation of any amount using payment_hash 0001020304050607080900010203040506070809000102030405060708090102 to me @03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad' => [
@@ -284,7 +285,7 @@ final class PaymentRequestDecoderTest extends TestCase
      *
      * @see https://github.com/lightningnetwork/lightning-rfc/blob/master/11-payment-encoding.md#examples-of-invalid-invoices
      */
-    public function providerOfInvalidScenarios(): array
+    public static function provideInvalidScenariosCases(): iterable
     {
         return [
             'Bech32 checksum is invalid.' => [
@@ -343,14 +344,15 @@ final class PaymentRequestDecoderTest extends TestCase
      * @covers ::wordsToHex
      * @covers ::wordsToIntBE
      * @covers ::wordsToUtf8
-     * @dataProvider providerOfSuccessScenarios
+     *
+     * @dataProvider provideSuccessScenariosCases
      */
     public function testSuccessScenarios(string $invoice, array $expectedResults): void
     {
         $result = $this->decoder->decode($invoice);
 
         foreach ($expectedResults as $expectedKey => $expectedValue) {
-            static::assertArrayHasKey($expectedKey, $result);
+            self::assertArrayHasKey($expectedKey, $result);
 
             if ('tags' === $expectedKey) {
                 foreach ($expectedValue as $expectedTag => $expectedTagValue) {
@@ -363,7 +365,7 @@ final class PaymentRequestDecoderTest extends TestCase
 
                         if ($tag['tag_name'] === $expectedTag) {
                             $found = true;
-                            static::assertSame(
+                            self::assertSame(
                                 $expectedTagValue,
                                 $tag['data'],
                                 sprintf('tag "%s" does not match expected value', $expectedTag)
@@ -371,19 +373,19 @@ final class PaymentRequestDecoderTest extends TestCase
                         }
                     }
 
-                    static::assertTrue($found);
+                    self::assertTrue($found);
                 }
             } elseif (\is_array($expectedValue)) {
                 foreach ($expectedValue as $expectedSubKey => $expectedSubValue) {
-                    static::assertArrayHasKey($expectedSubKey, $expectedValue);
-                    static::assertSame(
+                    self::assertArrayHasKey($expectedSubKey, $expectedValue);
+                    self::assertSame(
                         $expectedSubValue,
                         $expectedValue[$expectedSubKey],
                         sprintf('"%s.%s" does not match expected value', $expectedKey, $expectedSubKey)
                     );
                 }
             } else {
-                static::assertSame(
+                self::assertSame(
                     $expectedValue,
                     $result[$expectedKey],
                     sprintf('"%s" does not match expected value', $expectedKey)
@@ -410,7 +412,8 @@ final class PaymentRequestDecoderTest extends TestCase
      * @covers ::wordsToHex
      * @covers ::wordsToIntBE
      * @covers ::wordsToUtf8
-     * @dataProvider providerOfInvalidScenarios
+     *
+     * @dataProvider provideInvalidScenariosCases
      */
     public function testInvalidScenarios(string $invoice, string $expectedMessage, string $expectedInstanceOf): void
     {

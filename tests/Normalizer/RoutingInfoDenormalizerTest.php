@@ -53,12 +53,12 @@ final class RoutingInfoDenormalizerTest extends TestCase
             ],
         ], RoutingInfo::class.'[]');
 
-        static::assertNotEmpty($routingInfoArray);
-        static::assertSame($pubkey, $routingInfoArray[0]->getPubKey());
-        static::assertSame($shortChannelId, $routingInfoArray[0]->getShortChannelId());
-        static::assertSame($feeBaseMsat, $routingInfoArray[0]->getFeeBaseMsat());
-        static::assertSame($feeProportionalMillionths, $routingInfoArray[0]->getFeeProportionalMillionths());
-        static::assertSame($cltvExpiryDelta, $routingInfoArray[0]->getCltvExpiryDelta());
+        self::assertNotEmpty($routingInfoArray);
+        self::assertSame($pubkey, $routingInfoArray[0]->getPubKey());
+        self::assertSame($shortChannelId, $routingInfoArray[0]->getShortChannelId());
+        self::assertSame($feeBaseMsat, $routingInfoArray[0]->getFeeBaseMsat());
+        self::assertSame($feeProportionalMillionths, $routingInfoArray[0]->getFeeProportionalMillionths());
+        self::assertSame($cltvExpiryDelta, $routingInfoArray[0]->getCltvExpiryDelta());
 
         // assert single denormalize
         $routingInfo = $denormalizer->denormalize([
@@ -69,10 +69,10 @@ final class RoutingInfoDenormalizerTest extends TestCase
             'cltv_expiry_delta' => $cltvExpiryDelta,
         ], RoutingInfo::class);
 
-        static::assertSame($pubkey, $routingInfo->getPubKey());
-        static::assertSame($shortChannelId, $routingInfo->getShortChannelId());
-        static::assertSame($feeBaseMsat, $routingInfo->getFeeBaseMsat());
-        static::assertSame($feeProportionalMillionths, $routingInfo->getFeeProportionalMillionths());
-        static::assertSame($cltvExpiryDelta, $routingInfo->getCltvExpiryDelta());
+        self::assertSame($pubkey, $routingInfo->getPubKey());
+        self::assertSame($shortChannelId, $routingInfo->getShortChannelId());
+        self::assertSame($feeBaseMsat, $routingInfo->getFeeBaseMsat());
+        self::assertSame($feeProportionalMillionths, $routingInfo->getFeeProportionalMillionths());
+        self::assertSame($cltvExpiryDelta, $routingInfo->getCltvExpiryDelta());
     }
 }

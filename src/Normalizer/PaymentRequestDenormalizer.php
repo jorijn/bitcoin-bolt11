@@ -16,20 +16,15 @@ namespace Jorijn\Bitcoin\Bolt11\Normalizer;
 use Jorijn\Bitcoin\Bolt11\Model\PaymentRequest;
 use Jorijn\Bitcoin\Bolt11\Model\Tag;
 
-class PaymentRequestDenormalizer
+final class PaymentRequestDenormalizer
 {
     use DenormalizerTrait;
 
-    /** @var TagDenormalizer */
-    protected $tagDenormalizer;
+    private TagDenormalizer $tagDenormalizer;
 
-    public function __construct(TagDenormalizer $tagDenormalizer = null)
+    public function __construct(?TagDenormalizer $tagDenormalizer = null)
     {
-        if (null === $tagDenormalizer) {
-            $tagDenormalizer = new TagDenormalizer();
-        }
-
-        $this->tagDenormalizer = $tagDenormalizer;
+        $this->tagDenormalizer = $tagDenormalizer ?? new TagDenormalizer();
     }
 
     /** @noinspection PhpIncompatibleReturnTypeInspection */

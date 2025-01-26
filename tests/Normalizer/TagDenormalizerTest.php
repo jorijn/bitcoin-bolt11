@@ -26,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Normalizer\TagDenormalizer
+ *
  * @covers ::__construct
  *
  * @uses \Jorijn\Bitcoin\Bolt11\Normalizer\DenormalizerTrait
@@ -37,13 +38,13 @@ use PHPUnit\Framework\TestCase;
 final class TagDenormalizerTest extends TestCase
 {
     /** @var FallbackAddressDenormalizer|MockObject */
-    protected $fallbackAddressDenormalizer;
+    private $fallbackAddressDenormalizer;
 
     /** @var MockObject|RoutingInfoDenormalizer */
-    protected $routingInfoDenormalizer;
+    private $routingInfoDenormalizer;
 
     /** @var TagDenormalizer */
-    protected $tagDenormalizer;
+    private $tagDenormalizer;
 
     protected function setUp(): void
     {
@@ -71,9 +72,9 @@ final class TagDenormalizerTest extends TestCase
             ],
         ], Tag::class);
 
-        static::assertInstanceOf(UnknownTag::class, $tag);
-        static::assertSame((string) $tagCode, $tag->getTagName());
-        static::assertSame($words, $tag->getData());
+        self::assertInstanceOf(UnknownTag::class, $tag);
+        self::assertSame((string) $tagCode, $tag->getTagName());
+        self::assertSame($words, $tag->getData());
     }
 
     /**
@@ -89,10 +90,10 @@ final class TagDenormalizerTest extends TestCase
             ],
         ], Tag::class.'[]');
 
-        static::assertNotEmpty($tags);
-        static::assertInstanceOf(Tag::class, $tags[0]);
-        static::assertSame($tagName, $tags[0]->getTagName());
-        static::assertSame($data, $tags[0]->getData());
+        self::assertNotEmpty($tags);
+        self::assertInstanceOf(Tag::class, $tags[0]);
+        self::assertSame($tagName, $tags[0]->getTagName());
+        self::assertSame($data, $tags[0]->getData());
     }
 
     /**
@@ -106,9 +107,9 @@ final class TagDenormalizerTest extends TestCase
             'data' => $data = 'data'.random_int(1000, 2000),
         ], Tag::class);
 
-        static::assertInstanceOf(Tag::class, $tag);
-        static::assertSame($tagName, $tag->getTagName());
-        static::assertSame($data, $tag->getData());
+        self::assertInstanceOf(Tag::class, $tag);
+        self::assertSame($tagName, $tag->getTagName());
+        self::assertSame($data, $tag->getData());
     }
 
     /**
@@ -122,7 +123,7 @@ final class TagDenormalizerTest extends TestCase
         $routingInfo2 = $this->createMock(RoutingInfo::class);
 
         $this->routingInfoDenormalizer
-            ->expects(static::once())
+            ->expects(self::once())
             ->method('denormalize')
             ->with($inputArray, RoutingInfo::class.'[]')
             ->willReturn([$routingInfo1, $routingInfo2])
@@ -133,9 +134,9 @@ final class TagDenormalizerTest extends TestCase
             'data' => $inputArray,
         ], Tag::class);
 
-        static::assertInstanceOf(Tag::class, $tag);
-        static::assertSame(Tag::ROUTING_INFO, $tag->getTagName());
-        static::assertSame([$routingInfo1, $routingInfo2], $tag->getData());
+        self::assertInstanceOf(Tag::class, $tag);
+        self::assertSame(Tag::ROUTING_INFO, $tag->getTagName());
+        self::assertSame([$routingInfo1, $routingInfo2], $tag->getData());
     }
 
     /**
@@ -148,7 +149,7 @@ final class TagDenormalizerTest extends TestCase
         $fallbackAddress = $this->createMock(FallbackAddress::class);
 
         $this->fallbackAddressDenormalizer
-            ->expects(static::once())
+            ->expects(self::once())
             ->method('denormalize')
             ->with($inputArray)
             ->willReturn($fallbackAddress)
@@ -159,8 +160,8 @@ final class TagDenormalizerTest extends TestCase
             'data' => $inputArray,
         ], Tag::class);
 
-        static::assertInstanceOf(Tag::class, $tag);
-        static::assertSame(Tag::FALLBACK_ADDRESS, $tag->getTagName());
-        static::assertSame($fallbackAddress, $tag->getData());
+        self::assertInstanceOf(Tag::class, $tag);
+        self::assertSame(Tag::FALLBACK_ADDRESS, $tag->getTagName());
+        self::assertSame($fallbackAddress, $tag->getData());
     }
 }
