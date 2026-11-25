@@ -42,8 +42,9 @@ jobs:
         with:
           dependency-versions: ${{ matrix.dependencies }}
 
-      # Includes all official BOLT #11 test vectors (tests/Spec): every one of
-      # them is gated, there is no known-failures list anymore.
+      # Includes all official BOLT #11 and BOLT #12 test vectors
+      # (tests/Bolt11/Spec, tests/Bolt12/Spec) and the BIP-340 vectors: every
+      # one of them is gated, there is no known-failures list.
       - name: Run tests
         run: vendor/bin/phpunit --testdox
 

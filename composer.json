@@ -1,13 +1,15 @@
 {
   "name": "jorijn/bitcoin-bolt11",
-  "description": "Decode and verify Lightning Network payment requests (BOLT #11) in pure PHP",
+  "description": "Decode and verify Lightning Network payment requests in pure PHP: BOLT #11 invoices and BOLT #12 offers, invoice requests and invoices",
   "type": "library",
   "license": "MIT",
   "keywords": [
     "bitcoin",
     "bolt11",
+    "bolt12",
     "lightning-network",
     "invoice",
+    "offer",
     "payment-request"
   ],
   "homepage": "https://github.com/Jorijn/bitcoin-bolt11/",
@@ -31,12 +33,14 @@
   },
   "autoload": {
     "psr-4": {
-      "Jorijn\\Bitcoin\\Bolt11\\": "src/"
+      "Jorijn\\Bitcoin\\Bolt11\\": "src/Bolt11/",
+      "Jorijn\\Bitcoin\\Bolt12\\": "src/Bolt12/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\Jorijn\\Bitcoin\\Bolt11\\": "tests/"
+      "Tests\\Jorijn\\Bitcoin\\Bolt11\\": "tests/Bolt11/",
+      "Tests\\Jorijn\\Bitcoin\\Bolt12\\": "tests/Bolt12/"
     }
   },
   "require": {

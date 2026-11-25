@@ -52,7 +52,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(UnknownField::class)]
 final class Bolt11TestVectorsTest extends TestCase
 {
-    private const FIXTURE = __DIR__.'/../Fixtures/bolt11-invoice-test.json';
+    private const FIXTURE = __DIR__.'/../../Fixtures/bolt11-invoice-test.json';
 
     /** The key every example is signed with (vector 15 and the invalid ones aside). */
     private const PAYEE = '03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad';
