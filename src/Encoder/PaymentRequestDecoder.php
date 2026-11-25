@@ -30,6 +30,7 @@ use BitWasp\Buffertools\BufferInterface;
 use BitWasp\Buffertools\Buffertools;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidPaymentRequestException;
+use Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureDoesNotMatchPayeePubkeyDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
@@ -75,6 +76,9 @@ class PaymentRequestDecoder
         'secret' => 16,
     ];
 
+    /** 9999-12-31T23:59:59+00:00, the last moment \DateTime::ATOM can represent with a four-digit year. */
+    private const MAX_EXPIRY_TIMESTAMP = 253402300799;
+
     /** @var string[] */
     protected $tagNames = [];
 
@@ -91,122 +95,30 @@ class PaymentRequestDecoder
         $this->initializeTagParsers();
     }
 
+    /**
+     * Decodes a payment request into plain PHP array data.
+     *
+     * Every invoice that cannot be decoded results in a PaymentRequestDecodeException,
+     * so callers can safely decode untrusted input with a single catch block.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws PaymentRequestDecodeException
+     */
     public function decode(string $paymentRequest): array
     {
         try {
-            [$prefix, $words] = decodeRaw($paymentRequest);
+            return $this->decodePaymentRequest($paymentRequest);
+        } catch (PaymentRequestDecodeException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
-            throw new UnableToDecodeBech32Exception($exception->getMessage(), $exception->getCode(), $exception);
+            // Safety net: the checks in decodePaymentRequest() cover every failure
+            // we know of, but the dependencies (bitwasp/*) throw plain \Exception,
+            // \RuntimeException or even \ValueError on input they dislike. Malformed
+            // invoices come from outside, so none of that may escape the documented
+            // exception type. The original stays available as the previous exception.
+            throw new InvalidPaymentRequestException('unable to decode payment request: '.$exception->getMessage(), 0, $exception);
         }
-
-        if (0 !== strpos($prefix, 'ln')) {
-            throw new InvalidPaymentRequestException('data does not appear to be a bolt11 invoice');
-        }
-
-        // signature is always 104 words on the end
-        // cutting off at the beginning helps since there's no way to tell
-        // ahead of time how many tags there are.
-        $signatureWords = \array_slice($words, -104);
-
-        // grabbing a copy of the words for later, words will be sliced as we parse.
-        $wordsWithoutSignature = \array_slice($words, 0, -104);
-        $words = \array_slice($words, 0, -104);
-        $signatureBuffer = $this->wordsToBuffer($signatureWords);
-        $recoveryID = (int) $signatureBuffer->slice(-1)->getInt();
-
-        // get remaining signature buffer after extracting recovery flag
-        $signatureBuffer = $signatureBuffer->slice(0, -1);
-        if (!\in_array($recoveryID, [0, 1, 2, 3], true) || 64 !== $signatureBuffer->getSize()) {
-            throw new SignatureIncorrectOrMissingException('signature is missing or incorrect');
-        }
-
-        // without reverse lookups, can't say that the multiplier at the end must
-        // have a number before it, so instead we parse, and if the second group
-        // doesn't have anything, there's a good chance the last letter of the
-        // coin type got captured by the third group, so just re-regex without
-        // the number.
-        preg_match('/^ln(\S+?)(\d*)([a-zA-Z]?)$/', $prefix, $prefixMatches);
-
-        if ($prefixMatches && !$prefixMatches[2]) {
-            preg_match('/^ln(\S+)$/', $prefix, $prefixMatches);
-        }
-
-        if (!$prefixMatches) {
-            throw new InvalidPaymentRequestException('not a proper lightning payment request');
-        }
-
-        $bech32Prefix = $prefixMatches[1];
-        $coinNetwork = $this->getNetworkFromPrefix($bech32Prefix);
-
-        // parse the value from hrp
-        $value = $prefixMatches[2] ?? null;
-        if ($value) {
-            $divisor = $prefixMatches[3];
-
-            try {
-                $satoshis = (int) $this->hrpToSat($value.$divisor);
-            } catch (\Throwable $exception) {
-                $satoshis = 0;
-                $removeSatoshis = true;
-            }
-
-            $milliSatoshis = (int) $this->hrpToMillisat($value.$divisor);
-        } else {
-            $satoshis = null;
-            $milliSatoshis = null;
-        }
-
-        // reminder: left padded 0 bits, parse the timestamp
-        $timestamp = $this->wordsToIntBE(\array_slice($words, 0, 7));
-        $timestampString = date(\DateTime::ATOM, $timestamp);
-        $words = \array_slice($words, 7); // trim off the left 7 words
-
-        // parse the tags from the available words
-        $tags = $this->parseTagsFromWords($words, $coinNetwork);
-
-        $timeExpireDate = $timeExpireDateString = null;
-        if ($this->tagsContainItem($tags, $this->tagNames[6])) {
-            $timeExpireDate = $timestamp + $this->tagsItems($tags, $this->tagNames[6]);
-        } else {
-            // Default is 3600 (1 hour) if not specified.
-            $timeExpireDate = $timestamp + 3600;
-        }
-
-        $timeExpireDateString = date(\DateTime::ATOM, $timeExpireDate);
-
-        $toSign = Buffertools::concat(
-            new Buffer($prefix),
-            $this->wordsToBuffer($wordsWithoutSignature, false),
-        );
-
-        $payReqHash = Hash::sha256($toSign);
-        $sigPubkey = $this->extractVerifyPublicKey($recoveryID, $signatureBuffer, $payReqHash, $tags);
-
-        $finalResult = [
-            'prefix' => $prefix,
-            'network' => $coinNetwork,
-            'satoshis' => $satoshis,
-            'milli_satoshis' => $milliSatoshis,
-            'timestamp' => $timestamp,
-            'timestamp_string' => $timestampString,
-            'payee_node_key' => $sigPubkey->getHex(),
-            'signature' => $signatureBuffer->getHex(),
-            'recovery_flag' => $recoveryID,
-            'tags' => $tags,
-            '_payment_request_hash' => $payReqHash->getHex(),
-            '_message_to_sign' => $toSign->getHex(),
-        ];
-
-        if ($removeSatoshis ?? false) {
-            unset($finalResult['satoshis']);
-        }
-
-        if (null !== $timeExpireDate) {
-            $finalResult['expiry_timestamp'] = $timeExpireDate;
-            $finalResult['expiry_datetime'] = $timeExpireDateString;
-        }
-
-        return $finalResult;
     }
 
     public function convert(array $data, $inBits, $outBits): array
@@ -282,6 +194,142 @@ class PaymentRequestDecoder
         return $milliSatoshisBN;
     }
 
+    /**
+     * The actual decoding; decode() wraps it so every failure has the library's own exception type.
+     *
+     * @return array<string, mixed>
+     */
+    protected function decodePaymentRequest(string $paymentRequest): array
+    {
+        try {
+            [$prefix, $words] = decodeRaw($paymentRequest);
+        } catch (\Throwable $exception) {
+            throw new UnableToDecodeBech32Exception($exception->getMessage(), $exception->getCode(), $exception);
+        }
+
+        if (0 !== strpos($prefix, 'ln')) {
+            throw new InvalidPaymentRequestException('data does not appear to be a bolt11 invoice');
+        }
+
+        // A signature (104 words) and a timestamp (7 words) are mandatory. Without
+        // this check a short invoice reached gmp_init('') in bitwasp/buffertools.
+        if (\count($words) < 104 + 7) {
+            throw new SignatureIncorrectOrMissingException('signature is missing or incorrect');
+        }
+
+        // signature is always 104 words on the end
+        // cutting off at the beginning helps since there's no way to tell
+        // ahead of time how many tags there are.
+        $signatureWords = \array_slice($words, -104);
+
+        // grabbing a copy of the words for later, words will be sliced as we parse.
+        $wordsWithoutSignature = \array_slice($words, 0, -104);
+        $words = \array_slice($words, 0, -104);
+        $signatureBuffer = $this->wordsToBuffer($signatureWords);
+        $recoveryID = (int) $signatureBuffer->slice(-1)->getInt();
+
+        // get remaining signature buffer after extracting recovery flag
+        $signatureBuffer = $signatureBuffer->slice(0, -1);
+        if (!\in_array($recoveryID, [0, 1, 2, 3], true) || 64 !== $signatureBuffer->getSize()) {
+            throw new SignatureIncorrectOrMissingException('signature is missing or incorrect');
+        }
+
+        // without reverse lookups, can't say that the multiplier at the end must
+        // have a number before it, so instead we parse, and if the second group
+        // doesn't have anything, there's a good chance the last letter of the
+        // coin type got captured by the third group, so just re-regex without
+        // the number.
+        preg_match('/^ln(\S+?)(\d*)([a-zA-Z]?)$/', $prefix, $prefixMatches);
+
+        if ($prefixMatches && !$prefixMatches[2]) {
+            preg_match('/^ln(\S+)$/', $prefix, $prefixMatches);
+        }
+
+        if (!$prefixMatches) {
+            throw new InvalidPaymentRequestException('not a proper lightning payment request');
+        }
+
+        $bech32Prefix = $prefixMatches[1];
+        $coinNetwork = $this->getNetworkFromPrefix($bech32Prefix);
+
+        // parse the value from hrp
+        $value = $prefixMatches[2] ?? null;
+        if ($value) {
+            $divisor = $prefixMatches[3];
+
+            try {
+                $satoshis = (int) $this->hrpToSat($value.$divisor);
+            } catch (\Throwable $exception) {
+                $satoshis = 0;
+                $removeSatoshis = true;
+            }
+
+            $milliSatoshis = (int) $this->hrpToMillisat($value.$divisor);
+        } else {
+            $satoshis = null;
+            $milliSatoshis = null;
+        }
+
+        // reminder: left padded 0 bits, parse the timestamp
+        $timestamp = $this->wordsToIntBE(\array_slice($words, 0, 7));
+        $timestampString = date(\DateTime::ATOM, $timestamp);
+        $words = \array_slice($words, 7); // trim off the left 7 words
+
+        // parse the tags from the available words
+        $tags = $this->parseTagsFromWords($words, $coinNetwork);
+
+        if ($this->tagsContainItem($tags, $this->tagNames[6])) {
+            $timeExpireDate = $timestamp + $this->tagsItems($tags, $this->tagNames[6]);
+        } else {
+            // Default is 3600 (1 hour) if not specified.
+            $timeExpireDate = $timestamp + 3600;
+        }
+
+        // wordsToIntBE() keeps both terms within PHP_INT_MAX, but their sum can
+        // still overflow to a float (a TypeError in date()), and an expiry past
+        // the year 9999 gets a five-digit year that DateTime cannot parse back in
+        // the denormalizer. Neither is a usable invoice, so reject it here.
+        if (!\is_int($timeExpireDate) || $timeExpireDate > self::MAX_EXPIRY_TIMESTAMP) {
+            throw new InvalidPaymentRequestException('expiry time is out of range');
+        }
+
+        $timeExpireDateString = date(\DateTime::ATOM, $timeExpireDate);
+
+        $toSign = Buffertools::concat(
+            new Buffer($prefix),
+            $this->wordsToBuffer($wordsWithoutSignature, false),
+        );
+
+        $payReqHash = Hash::sha256($toSign);
+        $sigPubkey = $this->extractVerifyPublicKey($recoveryID, $signatureBuffer, $payReqHash, $tags);
+
+        $finalResult = [
+            'prefix' => $prefix,
+            'network' => $coinNetwork,
+            'satoshis' => $satoshis,
+            'milli_satoshis' => $milliSatoshis,
+            'timestamp' => $timestamp,
+            'timestamp_string' => $timestampString,
+            'payee_node_key' => $sigPubkey->getHex(),
+            'signature' => $signatureBuffer->getHex(),
+            'recovery_flag' => $recoveryID,
+            'tags' => $tags,
+            '_payment_request_hash' => $payReqHash->getHex(),
+            '_message_to_sign' => $toSign->getHex(),
+        ];
+
+        if ($removeSatoshis ?? false) {
+            unset($finalResult['satoshis']);
+        }
+
+        // Always present since the default expiry from PR #12; the spec's default
+        // is 3600 seconds when there is no `x` field.
+        $finalResult['expiry_timestamp'] = $timeExpireDate;
+        $finalResult['expiry_datetime'] = $timeExpireDateString;
+
+        return $finalResult;
+    }
+
     protected function initializeTagParsers(): void
     {
         $this->tagParsers[1] = [$this, 'wordsToHex'];
@@ -322,9 +370,17 @@ class PaymentRequestDecoder
 
     protected function wordsToIntBE(array $words): int
     {
+        // Shift in five bits per word instead of summing powers of 32: from the
+        // 13th word on, 32 ** $index is a float, which turned the result into a
+        // float and the return type into a TypeError, even for leading zeros.
+        // The spec puts no upper bound on `x` or `c`, so check for overflow.
         $total = 0;
-        foreach (array_reverse($words) as $index => $item) {
-            $total += $item * (32 ** $index);
+        foreach ($words as $word) {
+            if ($total > (PHP_INT_MAX >> 5)) {
+                throw new InvalidPaymentRequestException('integer field is too large');
+            }
+
+            $total = ($total << 5) | $word;
         }
 
         return $total;
@@ -434,6 +490,12 @@ class PaymentRequestDecoder
         $routes = [];
         $routesBuffer = $this->wordsToBuffer($words);
 
+        // Each hop is exactly 51 bytes. A partial hop used to surface as a plain
+        // \Exception from bitwasp/buffertools when slicing past the end.
+        if (0 !== $routesBuffer->getSize() % 51) {
+            throw new InvalidPaymentRequestException('routing info (r) field has an invalid length');
+        }
+
         while ($routesBuffer->getSize() > 0) {
             $pubKey = $routesBuffer->slice(0, 33)->getHex(); // 33 bytes
             $shortChannelId = $routesBuffer->slice(33, 8)->getHex(); // 8 bytes
@@ -457,28 +519,24 @@ class PaymentRequestDecoder
 
     protected function fallbackAddressParser(array $words, NetworkInterface $network): array
     {
+        // An empty `f` field has no version. Reading $words[0] anyway gave null,
+        // which the loose switch below matched against `case 0`.
+        if ([] === $words) {
+            throw new InvalidPaymentRequestException('fallback address (f) field is empty');
+        }
+
         $version = $words[0];
         $words = \array_slice($words, 1);
         $addressHash = $this->wordsToBuffer($words);
 
-        switch ($version) {
-            case 17:
-                $address = (new PayToPubKeyHashAddress($addressHash))->getAddress($network);
-
-                break;
-
-            case 18:
-                $address = (new ScriptHashAddress($addressHash))->getAddress($network);
-
-                break;
-
-            case 0:
-                $address = (new SegwitAddress(WitnessProgram::v0($addressHash)))->getAddress($network);
-
-                break;
-
-            default:
-                throw new UnknownFallbackAddressVersionException('unknown fallback address version ('.$version.') encountered while parsing');
+        try {
+            $address = $this->fallbackAddressFromHash($version, $addressHash, $network);
+        } catch (UnknownFallbackAddressVersionException $exception) {
+            throw $exception;
+        } catch (\RuntimeException $exception) {
+            // bitwasp/bitcoin rejects a hash of the wrong length for its version
+            // with a plain \RuntimeException; give it the library's own type.
+            throw new InvalidPaymentRequestException('fallback address (f) field is invalid: '.$exception->getMessage(), 0, $exception);
         }
 
         return [
@@ -486,5 +544,22 @@ class PaymentRequestDecoder
             'address' => $address,
             'address_hash' => $addressHash->getHex(),
         ];
+    }
+
+    private function fallbackAddressFromHash(int $version, BufferInterface $addressHash, NetworkInterface $network): string
+    {
+        switch ($version) {
+            case 17:
+                return (new PayToPubKeyHashAddress($addressHash))->getAddress($network);
+
+            case 18:
+                return (new ScriptHashAddress($addressHash))->getAddress($network);
+
+            case 0:
+                return (new SegwitAddress(WitnessProgram::v0($addressHash)))->getAddress($network);
+
+            default:
+                throw new UnknownFallbackAddressVersionException('unknown fallback address version ('.$version.') encountered while parsing');
+        }
     }
 }

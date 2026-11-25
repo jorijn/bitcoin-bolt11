@@ -16,10 +16,15 @@ namespace Tests\Jorijn\Bitcoin\Bolt11\Encoder;
 use BitWasp\Bitcoin\Bitcoin;
 use Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
+use Jorijn\Bitcoin\Bolt11\Exception\InvalidPaymentRequestException;
+use Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
 use PHPUnit\Framework\TestCase;
+
+use function BitWasp\Bech32\decodeRaw;
+use function BitWasp\Bech32\encode;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder
@@ -43,6 +48,7 @@ final class PaymentRequestDecoderTest extends TestCase
     /**
      * @covers ::convert
      * @covers ::decode
+     * @covers ::decodePaymentRequest
      * @covers ::extractVerifyPublicKey
      * @covers ::fallbackAddressParser
      * @covers ::getNetworkFromPrefix
@@ -351,6 +357,7 @@ final class PaymentRequestDecoderTest extends TestCase
     /**
      * @covers ::convert
      * @covers ::decode
+     * @covers ::decodePaymentRequest
      * @covers ::extractVerifyPublicKey
      * @covers ::fallbackAddressParser
      * @covers ::getNetworkFromPrefix
@@ -428,6 +435,7 @@ final class PaymentRequestDecoderTest extends TestCase
      * application or another library may have set.
      *
      * @covers ::decode
+     * @covers ::decodePaymentRequest
      * @covers ::hrpToMillisat
      * @covers ::hrpToSat
      *
@@ -466,5 +474,158 @@ final class PaymentRequestDecoderTest extends TestCase
             2000,
             2000000,
         ];
+    }
+
+    /**
+     * Malformed input must always end in the library's own exception type, so a
+     * single catch (PaymentRequestDecodeException) is enough for untrusted input.
+     * Each case used to escape as a TypeError, ValueError, \Exception or
+     * \RuntimeException from PHP or a dependency.
+     *
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToIntBE
+     *
+     * @dataProvider provideMalformedInputStaysInTheExceptionHierarchyCases
+     *
+     * @param int[] $tagWords
+     */
+    public function testMalformedInputStaysInTheExceptionHierarchy(array $tagWords, string $expectedMessage): void
+    {
+        try {
+            $this->decoder->decode(self::invoiceWithTags($tagWords));
+            self::fail('a malformed invoice was accepted');
+        } catch (PaymentRequestDecodeException $exception) {
+            self::assertInstanceOf(InvalidPaymentRequestException::class, $exception);
+            self::assertStringContainsString($expectedMessage, $exception->getMessage());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{int[], string}>
+     */
+    public static function provideMalformedInputStaysInTheExceptionHierarchyCases(): iterable
+    {
+        yield '`x` field above PHP_INT_MAX' => [self::tag(6, array_fill(0, 13, 31)), 'integer field is too large'];
+
+        yield '`c` field above PHP_INT_MAX' => [self::tag(24, array_fill(0, 13, 31)), 'integer field is too large'];
+
+        // 253402300800 seconds after the timestamp lands past the year 9999.
+        yield '`x` field that expires after the year 9999' => [self::tag(6, self::intToWords(253402300800)), 'expiry time is out of range'];
+
+        yield '`r` field with a partial hop (50 of 51 bytes)' => [self::tag(3, self::bytesToWords(str_repeat("\x02", 50))), 'routing info (r) field has an invalid length'];
+
+        yield 'empty `f` field' => [self::tag(9, []), 'fallback address (f) field is empty'];
+
+        yield '`f` field with a 19-byte P2PKH hash' => [self::tag(9, array_merge([17], self::bytesToWords(str_repeat("\x01", 19)))), 'fallback address (f) field is invalid'];
+
+        yield '`f` field with a 21-byte witness program' => [self::tag(9, array_merge([0], self::bytesToWords(str_repeat("\x01", 21)))), 'fallback address (f) field is invalid'];
+    }
+
+    /**
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     */
+    public function testTooShortForSignatureAndTimestamp(): void
+    {
+        // Used to reach gmp_init('') in bitwasp/buffertools and throw a \ValueError.
+        $this->expectException(SignatureIncorrectOrMissingException::class);
+
+        $this->decoder->decode(encode('lnbc', [0]));
+    }
+
+    /**
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::getNetworkFromPrefix
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToIntBE
+     */
+    public function testIntegerFieldWithLeadingZeroWords(): void
+    {
+        // 14 words is 70 bits, but the value is just 7200. The old power-of-32
+        // arithmetic computed 0 * 32 ** 13, a float, and threw a TypeError.
+        $result = $this->decoder->decode(self::invoiceWithTags(self::tag(6, array_merge(array_fill(0, 11, 0), self::intToWords(7200)))));
+
+        self::assertSame(1496314658 + 7200, $result['expiry_timestamp']);
+    }
+
+    /**
+     * Takes the timestamp (1496314658) and signature of a spec example and puts
+     * the given tags in between, with a valid bech32 checksum. The signature no
+     * longer matches, but the decoder parses all tags before it checks it.
+     *
+     * @param int[] $tagWords
+     */
+    private static function invoiceWithTags(array $tagWords): string
+    {
+        [$prefix, $words] = decodeRaw('lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w');
+
+        return encode($prefix, array_merge(\array_slice($words, 0, 7), $tagWords, \array_slice($words, -104)));
+    }
+
+    /**
+     * @param int[] $data
+     *
+     * @return int[]
+     */
+    private static function tag(int $code, array $data): array
+    {
+        return array_merge([$code, \count($data) >> 5, \count($data) & 31], $data);
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function intToWords(int $value): array
+    {
+        $words = [];
+        do {
+            array_unshift($words, $value & 31);
+            $value >>= 5;
+        } while ($value > 0);
+
+        return $words;
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function bytesToWords(string $bytes): array
+    {
+        $words = [];
+        $accumulator = $bits = 0;
+        foreach (str_split($bytes) as $byte) {
+            $accumulator = ($accumulator << 8) | \ord($byte);
+            $bits += 8;
+            while ($bits >= 5) {
+                $bits -= 5;
+                $words[] = ($accumulator >> $bits) & 31;
+            }
+        }
+
+        if ($bits > 0) {
+            $words[] = ($accumulator << (5 - $bits)) & 31;
+        }
+
+        return $words;
     }
 }

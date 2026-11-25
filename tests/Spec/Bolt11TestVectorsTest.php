@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Tests\Jorijn\Bitcoin\Bolt11\Spec;
 
 use Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder;
+use Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException;
 use Jorijn\Bitcoin\Bolt11\Normalizer\PaymentRequestDenormalizer;
 use PHPUnit\Framework\TestCase;
 
@@ -29,6 +30,7 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers ::__construct
  * @covers ::decode
+ * @covers ::decodePaymentRequest
  * @covers \Jorijn\Bitcoin\Bolt11\Normalizer\PaymentRequestDenormalizer
  *
  * @internal
@@ -107,12 +109,11 @@ final class Bolt11TestVectorsTest extends TestCase
             return;
         }
 
-        // An invalid vector must be rejected. \Throwable rather than the
-        // library's own exception type, because some rejections still escape
-        // the exception hierarchy today (fixed in v1.1, see the plan).
+        // An invalid vector must be rejected with the library's own exception
+        // type, so callers can rely on a single catch for untrusted input.
         try {
             $denormalizer->denormalize($decoder->decode($invoice));
-        } catch (\Throwable $exception) {
+        } catch (PaymentRequestDecodeException $exception) {
             $this->addToAssertionCount(1);
 
             return;
