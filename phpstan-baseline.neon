@@ -25,12 +25,6 @@ parameters:
 			path: src/Encoder/PaymentRequestDecoder.php
 
 		-
-			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:decode\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Encoder/PaymentRequestDecoder.php
-
-		-
 			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:extractVerifyPublicKey\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -147,12 +141,6 @@ parameters:
 		-
 			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''wordsToUtf8''\}\|Closure\>\.$#'
 			identifier: assign.propertyType
-			count: 1
-			path: src/Encoder/PaymentRequestDecoder.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between null and \(float\|int\) will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: src/Encoder/PaymentRequestDecoder.php
 

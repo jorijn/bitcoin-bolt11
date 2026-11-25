@@ -14,12 +14,20 @@ declare(strict_types=1);
 namespace Tests\Jorijn\Bitcoin\Bolt11\Encoder;
 
 use BitWasp\Bitcoin\Bitcoin;
+use BitWasp\Bitcoin\Network\Networks\BitcoinTestnet;
 use Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
+use Jorijn\Bitcoin\Bolt11\Exception\InvalidPaymentRequestException;
+use Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet;
 use PHPUnit\Framework\TestCase;
+
+use function BitWasp\Bech32\decodeRaw;
+use function BitWasp\Bech32\encode;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder
@@ -43,6 +51,7 @@ final class PaymentRequestDecoderTest extends TestCase
     /**
      * @covers ::convert
      * @covers ::decode
+     * @covers ::decodePaymentRequest
      * @covers ::extractVerifyPublicKey
      * @covers ::fallbackAddressParser
      * @covers ::getNetworkFromPrefix
@@ -351,6 +360,7 @@ final class PaymentRequestDecoderTest extends TestCase
     /**
      * @covers ::convert
      * @covers ::decode
+     * @covers ::decodePaymentRequest
      * @covers ::extractVerifyPublicKey
      * @covers ::fallbackAddressParser
      * @covers ::getNetworkFromPrefix
@@ -421,5 +431,289 @@ final class PaymentRequestDecoderTest extends TestCase
                 InvalidAmountException::class,
             ],
         ];
+    }
+
+    /**
+     * Signed with the private key of the BOLT #11 examples, so the payee is
+     * 03e7156a...; generated for this test because the spec has no vectors for
+     * these networks. The expected addresses were computed independently with
+     * the BIP 173 reference implementation and base58check.
+     *
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
+     * @covers ::wordsToUtf8
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet
+     *
+     * @dataProvider provideSignetAndRegtestCases
+     */
+    public function testSignetAndRegtest(string $invoice, string $expectedNetwork, ?int $expectedSatoshis, string $expectedFallbackAddress): void
+    {
+        $result = $this->decoder->decode($invoice);
+
+        self::assertInstanceOf($expectedNetwork, $result['network']);
+        self::assertSame($expectedSatoshis, $result['satoshis']);
+        self::assertSame('03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad', $result['payee_node_key']);
+
+        $fallbackAddresses = array_values(array_filter($result['tags'], static function (array $tag): bool {
+            return 'fallback_address' === $tag['tag_name'];
+        }));
+        self::assertSame($expectedFallbackAddress, $fallbackAddresses[0]['data']['address']);
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string, null|int, string}>
+     */
+    public static function provideSignetAndRegtestCases(): iterable
+    {
+        yield 'signet (lntbs), P2WPKH fallback' => [
+            'lntbs10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqavfhkcap3xys8x6t8dejhggr5v4ehgfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksxzgmshyrqjzcv752mutp5v6fksvrhpxj6ygjl30xdnuqnckmua4hx7numzz2z0zlemr82ylzxnpwq4pawgljtv7ncpjmarhhdjd20spcc7t80',
+            BitcoinSignet::class,
+            1000,
+            'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+        ];
+
+        // bitwasp/bitcoin's own regtest network would give tb1q... here.
+        yield 'regtest (lnbcrt), P2WPKH fallback' => [
+            'lnbcrt10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqlvfhkcap3xys8yet8w3jhxapqw3jhxaqfppqw508d6qejxtdg4y5r3zarvary0c5xw7kc0x2xaw0tffy8ke4d2fchgu35q2zrzy83j4l664acp4s43m7mt38dzaqhgd2vaecln9yz8zk55u60a3z8ea8v2zy70x2r3kefl7llqqp2rw8yn',
+            BitcoinRegtest::class,
+            1000,
+            'bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080',
+        ];
+
+        yield 'regtest (lnbcrt) without amount, P2PKH fallback' => [
+            'lnbcrt1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdpqvfhkcap3xys8yet8w3jhxapqwqe8q6mgfpp3x9et2e20v6pu37c5d9vax37wxq72un982p5k8dzmvyz9rjt0a90r5p76nhpdfmnh9u6vvl6nc9gs93uhz9wsa8sf652834zz36594h9d33g8ff8wz0m8z40uhmdtze98epdrc8qqgrkl3m',
+            BitcoinRegtest::class,
+            null,
+            'mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP',
+        ];
+    }
+
+    /**
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::getNetworkFromPrefix
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet
+     */
+    public function testSignetIsNotMistakenForTestnet(): void
+    {
+        // Signet shares testnet's address format, but not its coins.
+        $result = $this->decoder->decode('lntbs10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqavfhkcap3xys8x6t8dejhggr5v4ehgfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksxzgmshyrqjzcv752mutp5v6fksvrhpxj6ygjl30xdnuqnckmua4hx7numzz2z0zlemr82ylzxnpwq4pawgljtv7ncpjmarhhdjd20spcc7t80');
+
+        self::assertNotInstanceOf(BitcoinTestnet::class, $result['network']);
+    }
+
+    /**
+     * The amount must not depend on the process-wide bcscale(), which the
+     * application or another library may have set.
+     *
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     *
+     * @dataProvider provideAmountIsIndependentOfBcscaleCases
+     */
+    public function testAmountIsIndependentOfBcscale(string $invoice, int $expectedSatoshis, int $expectedMilliSatoshis): void
+    {
+        $originalScale = bcscale();
+
+        try {
+            bcscale(10);
+            $result = $this->decoder->decode($invoice);
+        } finally {
+            bcscale($originalScale);
+        }
+
+        self::assertSame($expectedSatoshis, $result['satoshis']);
+        self::assertSame($expectedMilliSatoshis, $result['milli_satoshis']);
+    }
+
+    /**
+     * @return iterable<string, array{string, int, int}>
+     */
+    public static function provideAmountIsIndependentOfBcscaleCases(): iterable
+    {
+        // A `p` amount used to be rejected as "outside valid range".
+        yield 'pico-bitcoin amount, fractional satoshis are truncated' => [
+            'lnbc9678785340p1pwmna7lpp5gc3xfm08u9qy06djf8dfflhugl6p7lgza6dsjxq454gxhj9t7a0sd8dgfkx7cmtwd68yetpd5s9xar0wfjn5gpc8qhrsdfq24f5ggrxdaezqsnvda3kkum5wfjkzmfqf3jkgem9wgsyuctwdus9xgrcyqcjcgpzgfskx6eqf9hzqnteypzxz7fzypfhg6trddjhygrcyqezcgpzfysywmm5ypxxjemgw3hxjmn8yptk7untd9hxwg3q2d6xjcmtv4ezq7pqxgsxzmnyyqcjqmt0wfjjq6t5v4khxxqyjw5qcqp2rzjq0gxwkzc8w6323m55m4jyxcjwmy7stt9hwkwe2qxmy8zpsgg7jcuwz87fcqqeuqqqyqqqqlgqqqqn3qq9qn07ytgrxxzad9hc4xt3mawjjt8znfv8xzscs7007v9gh9j569lencxa8xeujzkxs0uamak9aln6ez02uunw6rd2ht2sqe4hz8thcdagpleym0j',
+            967878,
+            967878534,
+        ];
+
+        // A whole number of satoshis used to lose its `satoshis` key.
+        yield 'whole satoshis' => [
+            'lnbc20u1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksp5m6kmam774klwlh4dhmhaatd7al02m0h0m6kmam774klwlh4dhmhs9qypqqqxqrrsscqpfck3fd5pdf7ermq4ajdr7eawzxzzspr8f2fqtw8kewj5f57l4uexxwgdy3xftzqm8a0yh7rnt6wsuzay8tqauq0cufzmamfu0y8zplhqpgpuvpj',
+            2000,
+            2000000,
+        ];
+    }
+
+    /**
+     * Malformed input must always end in the library's own exception type, so a
+     * single catch (PaymentRequestDecodeException) is enough for untrusted input.
+     * Each case used to escape as a TypeError, ValueError, \Exception or
+     * \RuntimeException from PHP or a dependency.
+     *
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToIntBE
+     *
+     * @dataProvider provideMalformedInputStaysInTheExceptionHierarchyCases
+     *
+     * @param int[] $tagWords
+     */
+    public function testMalformedInputStaysInTheExceptionHierarchy(array $tagWords, string $expectedMessage): void
+    {
+        try {
+            $this->decoder->decode(self::invoiceWithTags($tagWords));
+            self::fail('a malformed invoice was accepted');
+        } catch (PaymentRequestDecodeException $exception) {
+            self::assertInstanceOf(InvalidPaymentRequestException::class, $exception);
+            self::assertStringContainsString($expectedMessage, $exception->getMessage());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{int[], string}>
+     */
+    public static function provideMalformedInputStaysInTheExceptionHierarchyCases(): iterable
+    {
+        yield '`x` field above PHP_INT_MAX' => [self::tag(6, array_fill(0, 13, 31)), 'integer field is too large'];
+
+        yield '`c` field above PHP_INT_MAX' => [self::tag(24, array_fill(0, 13, 31)), 'integer field is too large'];
+
+        // 253402300800 seconds after the timestamp lands past the year 9999.
+        yield '`x` field that expires after the year 9999' => [self::tag(6, self::intToWords(253402300800)), 'expiry time is out of range'];
+
+        yield '`r` field with a partial hop (50 of 51 bytes)' => [self::tag(3, self::bytesToWords(str_repeat("\x02", 50))), 'routing info (r) field has an invalid length'];
+
+        yield 'empty `f` field' => [self::tag(9, []), 'fallback address (f) field is empty'];
+
+        yield '`f` field with a 19-byte P2PKH hash' => [self::tag(9, array_merge([17], self::bytesToWords(str_repeat("\x01", 19)))), 'fallback address (f) field is invalid'];
+
+        yield '`f` field with a 21-byte witness program' => [self::tag(9, array_merge([0], self::bytesToWords(str_repeat("\x01", 21)))), 'fallback address (f) field is invalid'];
+    }
+
+    /**
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     */
+    public function testTooShortForSignatureAndTimestamp(): void
+    {
+        // Used to reach gmp_init('') in bitwasp/buffertools and throw a \ValueError.
+        $this->expectException(SignatureIncorrectOrMissingException::class);
+
+        $this->decoder->decode(encode('lnbc', [0]));
+    }
+
+    /**
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::getNetworkFromPrefix
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToIntBE
+     */
+    public function testIntegerFieldWithLeadingZeroWords(): void
+    {
+        // 14 words is 70 bits, but the value is just 7200. The old power-of-32
+        // arithmetic computed 0 * 32 ** 13, a float, and threw a TypeError.
+        $result = $this->decoder->decode(self::invoiceWithTags(self::tag(6, array_merge(array_fill(0, 11, 0), self::intToWords(7200)))));
+
+        self::assertSame(1496314658 + 7200, $result['expiry_timestamp']);
+    }
+
+    /**
+     * Takes the timestamp (1496314658) and signature of a spec example and puts
+     * the given tags in between, with a valid bech32 checksum. The signature no
+     * longer matches, but the decoder parses all tags before it checks it.
+     *
+     * @param int[] $tagWords
+     */
+    private static function invoiceWithTags(array $tagWords): string
+    {
+        [$prefix, $words] = decodeRaw('lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w');
+
+        return encode($prefix, array_merge(\array_slice($words, 0, 7), $tagWords, \array_slice($words, -104)));
+    }
+
+    /**
+     * @param int[] $data
+     *
+     * @return int[]
+     */
+    private static function tag(int $code, array $data): array
+    {
+        return array_merge([$code, \count($data) >> 5, \count($data) & 31], $data);
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function intToWords(int $value): array
+    {
+        $words = [];
+        do {
+            array_unshift($words, $value & 31);
+            $value >>= 5;
+        } while ($value > 0);
+
+        return $words;
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function bytesToWords(string $bytes): array
+    {
+        $words = [];
+        $accumulator = $bits = 0;
+        foreach (str_split($bytes) as $byte) {
+            $accumulator = ($accumulator << 8) | \ord($byte);
+            $bits += 8;
+            while ($bits >= 5) {
+                $bits -= 5;
+                $words[] = ($accumulator >> $bits) & 31;
+            }
+        }
+
+        if ($bits > 0) {
+            $words[] = ($accumulator << (5 - $bits)) & 31;
+        }
+
+        return $words;
     }
 }

@@ -46,4 +46,30 @@ final class PaymentRequestTest extends TestCase
         self::assertSame($tag1, $paymentRequest->findTagByName('tag1'));
         self::assertSame($tag2, $paymentRequest->findTagByName('tag2'));
     }
+
+    /**
+     * @covers ::findTagsByName
+     * @covers ::getTags
+     * @covers ::setTags
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Model\Tag
+     */
+    public function testFindTagsByName(): void
+    {
+        $paymentRequest = new PaymentRequest();
+
+        $route1 = new Tag();
+        $route1->setTagName(Tag::ROUTING_INFO);
+        $description = new Tag();
+        $description->setTagName(Tag::DESCRIPTION);
+        $route2 = new Tag();
+        $route2->setTagName(Tag::ROUTING_INFO);
+
+        $paymentRequest->setTags([$route1, $description, $route2]);
+
+        // All matches in invoice order, re-indexed from 0 so callers can use $tags[0].
+        self::assertSame([$route1, $route2], $paymentRequest->findTagsByName(Tag::ROUTING_INFO));
+        self::assertSame([$description], $paymentRequest->findTagsByName(Tag::DESCRIPTION));
+        self::assertSame([], $paymentRequest->findTagsByName(Tag::FALLBACK_ADDRESS));
+    }
 }
