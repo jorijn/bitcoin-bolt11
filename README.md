@@ -3,7 +3,7 @@
 [![Latest Stable Version](https://img.shields.io/packagist/v/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 [![Total Downloads](https://img.shields.io/packagist/dt/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 [![License](https://img.shields.io/github/license/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
-![PHPUnit Tests](https://github.com/Jorijn/bitcoin-bolt11/workflows/PHPUnit%20Tests/badge.svg)
+[![CI](https://github.com/Jorijn/bitcoin-bolt11/actions/workflows/test.yml/badge.svg)](https://github.com/Jorijn/bitcoin-bolt11/actions/workflows/test.yml)
 
 This library aims to be a tool to decode BOLT #11 Payment Requests into usable PHP objects. Currently, only decoding is supported. 
 
@@ -14,6 +14,8 @@ BOLT #11 is a simple, extendable, QR-code-ready protocol for requesting payments
 ```shell
 $ composer require jorijn/bitcoin-bolt11
 ```
+
+Requires PHP 7.4 or later with the `bcmath`, `gmp` and `mbstring` extensions.
 
 ## Usage
 
@@ -57,9 +59,42 @@ foreach ($paymentRequest->findTagByName(\Jorijn\Bitcoin\Bolt11\Model\Tag::ROUTIN
 
 More examples are available in the [examples](examples) directory.
 
+### Fields that appear more than once
+
+An invoice can carry several routing hints (`r`) and fallback addresses (`f`). `findTagByName()` returns only the first; `findTagsByName()` returns all of them, in invoice order:
+
+```php
+foreach ($paymentRequest->findTagsByName(\Jorijn\Bitcoin\Bolt11\Model\Tag::FALLBACK_ADDRESS) as $tag) {
+    echo 'fallback address: ' . $tag->getData()->getAddress();
+}
+```
+
+### Handling invalid invoices
+
+Every invoice that cannot be decoded throws a `\Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException` (or a subclass), so one `catch` is enough when you decode input from outside:
+
+```php
+try {
+    $paymentRequest = $denormalizer->denormalize($decoder->decode($invoice));
+} catch (\Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException $exception) {
+    // not a valid BOLT #11 invoice
+}
+```
+
+## Networks
+
+| Prefix   | Network | `getNetwork()` returns                             |
+|----------|---------|----------------------------------------------------|
+| `lnbc`   | mainnet | `BitWasp\Bitcoin\Network\Networks\Bitcoin`          |
+| `lntb`   | testnet | `BitWasp\Bitcoin\Network\Networks\BitcoinTestnet`   |
+| `lntbs`  | signet  | `Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet`        |
+| `lnbcrt` | regtest | `Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest`       |
+
+Signet is deliberately not a subclass of `BitcoinTestnet`, even though its addresses look the same: coins on one network do not exist on the other. The regtest class extends the one from `bitwasp/bitcoin`, but encodes fallback addresses with the `bcrt` prefix that Bitcoin Core uses on regtest.
+
 ## Warning
 
-The `->getSatoshis()` method will only return a valid number if the invoice is for a whole number of satoshis. If it is in a fractional number of satoshis, and the method returns NULL, the `->getMilliSatoshis()` method must be used. 1000 millisatoshis is 1 satoshi.
+`->getSatoshis()` truncates to whole satoshis: an invoice for 1500 millisatoshis returns `1`. Use `->getMilliSatoshis()` when you need the exact amount; 1000 millisatoshis is 1 satoshi. Both return `null` for an invoice without an amount.
 
 ## Thanks
 
