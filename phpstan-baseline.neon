@@ -1,0 +1,295 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:convert\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:convert\(\) has parameter \$inBits with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:convert\(\) has parameter \$outBits with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:convert\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:decode\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:extractVerifyPublicKey\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:fallbackAddressParser\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:fallbackAddressParser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:parseTagsFromWords\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:parseTagsFromWords\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:routingInfoParser\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:routingInfoParser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:tagsContainItem\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:tagsItems\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:tagsItems\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:wordsToBuffer\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:wordsToHex\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:wordsToIntBE\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:wordsToUtf8\(\) has parameter \$words with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Parameter \#1 \$adapter of class BitWasp\\Bitcoin\\Crypto\\EcAdapter\\Impl\\PhpEcc\\Serializer\\Signature\\CompactSignatureSerializer constructor expects BitWasp\\Bitcoin\\Crypto\\EcAdapter\\Impl\\PhpEcc\\Adapter\\EcAdapter, BitWasp\\Bitcoin\\Crypto\\EcAdapter\\Adapter\\EcAdapterInterface given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''fallbackAddressPars…''\}\|Closure\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''routingInfoParser''\}\|Closure\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''wordsToHex''\}\|Closure\>\.$#'
+			identifier: assign.propertyType
+			count: 4
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''wordsToIntBE''\}\|Closure\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Property Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\:\:\$tagParsers \(array\<Closure\>\) does not accept non\-empty\-array\<array\{\$this\(Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoder\), ''wordsToUtf8''\}\|Closure\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and \(float\|int\) will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Encoder/PaymentRequestDecoder.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Model\\PaymentRequest\:\:setTags\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/PaymentRequest.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\FallbackAddressDenormalizer\:\:denormalize\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/FallbackAddressDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\FallbackAddressDenormalizer\:\:denormalizerDataWithSetters\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/FallbackAddressDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\PaymentRequestDenormalizer\:\:denormalize\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/PaymentRequestDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\PaymentRequestDenormalizer\:\:denormalizerDataWithSetters\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/PaymentRequestDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\RoutingInfoDenormalizer\:\:denormalize\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Normalizer/RoutingInfoDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\RoutingInfoDenormalizer\:\:denormalize\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/RoutingInfoDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\RoutingInfoDenormalizer\:\:denormalize\(\) has parameter \$type with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Normalizer/RoutingInfoDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\RoutingInfoDenormalizer\:\:denormalizeRoutingInfo\(\) has parameter \$routingInfo with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/RoutingInfoDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\RoutingInfoDenormalizer\:\:denormalizerDataWithSetters\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/RoutingInfoDenormalizer.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\TagDenormalizer\:\:denormalize\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\TagDenormalizer\:\:denormalize\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\TagDenormalizer\:\:denormalize\(\) has parameter \$type with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\TagDenormalizer\:\:denormalizeTag\(\) has parameter \$tag with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Jorijn\\Bitcoin\\Bolt11\\Normalizer\\TagDenormalizer\:\:denormalizerDataWithSetters\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Normalizer/TagDenormalizer.php
+
+		-
+			message: '#^Method Tests\\Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoderTest\:\:provideInvalidScenariosCases\(\) return type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Encoder/PaymentRequestDecoderTest.php
+
+		-
+			message: '#^Method Tests\\Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoderTest\:\:provideSuccessScenariosCases\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Encoder/PaymentRequestDecoderTest.php
+
+		-
+			message: '#^Method Tests\\Jorijn\\Bitcoin\\Bolt11\\Encoder\\PaymentRequestDecoderTest\:\:testSuccessScenarios\(\) has parameter \$expectedResults with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Encoder/PaymentRequestDecoderTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\MockObject\\MockObject\:\:denormalizerDataWithSetters\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Normalizer/DenormalizerTraitTest.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and non\-falsy\-string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: tests/Normalizer/PaymentRequestDenormalizerTest.php
+
+		-
+			message: '#^Method Tests\\Jorijn\\Bitcoin\\Bolt11\\Spec\\Bolt11TestVectorsTest\:\:provideKnownFailureCases\(\) return type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Spec/Bolt11TestVectorsTest.php
+
+		-
+			message: '#^Method Tests\\Jorijn\\Bitcoin\\Bolt11\\Spec\\Bolt11TestVectorsTest\:\:provideVectorCases\(\) return type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Spec/Bolt11TestVectorsTest.php

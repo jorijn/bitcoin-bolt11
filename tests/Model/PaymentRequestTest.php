@@ -42,8 +42,8 @@ final class PaymentRequestTest extends TestCase
 
         $paymentRequest->setTags([$tag1, $tag2]);
 
-        static::assertNull($paymentRequest->findTagByName('tag3'));
-        static::assertSame($tag1, $paymentRequest->findTagByName('tag1'));
-        static::assertSame($tag2, $paymentRequest->findTagByName('tag2'));
+        self::assertNull($paymentRequest->findTagByName('tag3'));
+        self::assertSame($tag1, $paymentRequest->findTagByName('tag1'));
+        self::assertSame($tag2, $paymentRequest->findTagByName('tag2'));
     }
 }

@@ -39,6 +39,7 @@ final class DenormalizerTraitTest extends TestCase
 
     /**
      * @covers ::denormalizerDataWithSetters
+     *
      * @noinspection MockingMethodsCorrectnessInspection
      */
     public function testDenormalizerTraitAttributeFiller(): void
@@ -51,8 +52,8 @@ final class DenormalizerTraitTest extends TestCase
             ->getMock()
         ;
 
-        $model->expects(static::once())->method('setValueOne')->with($value1 = random_int(1000, 2000));
-        $model->expects(static::once())->method('setValueTwo')->with($value2 = random_int(1000, 2000));
+        $model->expects(self::once())->method('setValueOne')->with($value1 = random_int(1000, 2000));
+        $model->expects(self::once())->method('setValueTwo')->with($value2 = random_int(1000, 2000));
 
         $mock->denormalizerDataWithSetters(
             $model,

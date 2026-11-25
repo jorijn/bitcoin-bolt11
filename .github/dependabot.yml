@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Keeps the action versions current; the old workflow sat on checkout@v1 for years.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  # For a library this only raises constraints in composer.json, which is a
+  # release decision, so PRs are grouped and kept to a low monthly cadence.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: monthly
+    versioning-strategy: increase-if-necessary
+    groups:
+      dev-tools:
+        dependency-type: development

@@ -30,8 +30,8 @@ class TagDenormalizer
     protected $routingInfoDenormalizer;
 
     public function __construct(
-        FallbackAddressDenormalizer $fallbackAddressDenormalizer = null,
-        RoutingInfoDenormalizer $routingInfoDenormalizer = null
+        ?FallbackAddressDenormalizer $fallbackAddressDenormalizer = null,
+        ?RoutingInfoDenormalizer $routingInfoDenormalizer = null
     ) {
         if (null === $fallbackAddressDenormalizer) {
             $fallbackAddressDenormalizer = new FallbackAddressDenormalizer();

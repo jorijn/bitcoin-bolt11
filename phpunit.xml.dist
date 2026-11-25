@@ -17,6 +17,15 @@
         </testsuite>
     </testsuites>
 
+    <!-- Official spec vectors the library still gets wrong; run them with
+         `composer test:spec-known-failures`; CI reports them and fails only
+         once one of them starts passing. -->
+    <groups>
+        <exclude>
+            <group>spec-known-failure</group>
+        </exclude>
+    </groups>
+
     <coverage cacheDirectory=".phpunit.cache/code-coverage"
               processUncoveredFiles="true">
         <include>
