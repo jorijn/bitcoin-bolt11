@@ -96,6 +96,22 @@ Signet is deliberately not a subclass of `BitcoinTestnet`, even though its addre
 
 `->getSatoshis()` truncates to whole satoshis: an invoice for 1500 millisatoshis returns `1`. Use `->getMilliSatoshis()` when you need the exact amount; 1000 millisatoshis is 1 satoshi. Both return `null` for an invoice without an amount.
 
+## Contributing and releases
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please). It reads the commit messages on `master`, so they follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). The type decides whether a commit ends up in a release:
+
+| Commit message                                                     | Effect                                         |
+|--------------------------------------------------------------------|------------------------------------------------|
+| `fix: reject invoices with an empty f field`                       | patch release (1.1.0 → 1.1.1), under Bug Fixes |
+| `feat: decode BOLT 12 offers`                                      | minor release (1.1.0 → 1.2.0), under Features  |
+| `feat!: require PHP 8.3`, or a `BREAKING CHANGE:` footer           | major release (1.x → 2.0.0)                    |
+| `deps: allow protonlabs/bitcoin ^2.0`                              | patch release, under Dependencies              |
+| `docs:`, `test:`, `ci:`, `build:`, `chore:`, `refactor:`, `style:` | no release, not in the changelog               |
+
+With a squash merge, the pull request title becomes the commit message, so the title needs the type (`fix: …`, `feat: …`); the commit messages inside the pull request are then ignored. With a merge commit, release-please reads every commit in the pull request instead.
+
+After each push to `master`, release-please keeps one open pull request up to date with the next version and its CHANGELOG entry. Merging that pull request tags the version, publishes the GitHub release, and Packagist picks up the tag.
+
 ## Thanks
 
 This library is based on other BOLT #11 libraries from other programming languages. Special thanks to:

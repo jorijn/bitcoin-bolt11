@@ -1,10 +1,14 @@
 version: 2
 updates:
   # Keeps the action versions current; the old workflow sat on checkout@v1 for years.
+  # "ci:" is a hidden type for release-please: a new action version changes
+  # nothing for users of the library, so it must not trigger a release.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: ci
 
   # For a library this only raises constraints in composer.json, which is a
   # release decision, so PRs are grouped and kept to a low monthly cadence.
@@ -13,6 +17,13 @@ updates:
     schedule:
       interval: monthly
     versioning-strategy: increase-if-necessary
+    commit-message:
+      # A changed runtime constraint changes what users can install, so "deps:"
+      # gives a patch release with a Dependencies section. Dev tools (PHPUnit,
+      # PHPStan, php-cs-fixer) never reach users, so "chore:" keeps them out of
+      # releases and the changelog.
+      prefix: deps
+      prefix-development: chore
     groups:
       dev-tools:
         dependency-type: development
