@@ -23,8 +23,9 @@
   "prefer-stable": true,
   "minimum-stability": "stable",
   "require-dev": {
-    "friendsofphp/php-cs-fixer": "^3.10",
-    "phpunit/phpunit": "^9"
+    "friendsofphp/php-cs-fixer": "^3.59",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^9.6.33"
   },
   "autoload": {
     "psr-4": {
@@ -41,6 +42,13 @@
     "ext-bcmath": "*",
     "ext-gmp": "*",
     "bitwasp/bech32": "^0.0.1",
-    "protonlabs/bitcoin": "^1.0"
+    "protonlabs/bitcoin": "^1.0.10"
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:spec-known-failures": "phpunit --group spec-known-failure",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs:fix": "php-cs-fixer fix",
+    "stan": "phpstan analyse --memory-limit=1G"
   }
 }
