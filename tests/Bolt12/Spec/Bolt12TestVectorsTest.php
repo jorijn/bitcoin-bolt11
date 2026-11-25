@@ -20,6 +20,7 @@ use Jorijn\Bitcoin\Bolt12\Bolt12Decoder;
 use Jorijn\Bitcoin\Bolt12\Exception\Bolt12DecodeException;
 use Jorijn\Bitcoin\Bolt12\Internal\Bolt12String;
 use Jorijn\Bitcoin\Bolt12\Internal\ByteReader;
+use Jorijn\Bitcoin\Bolt12\Internal\FieldReader;
 use Jorijn\Bitcoin\Bolt12\Internal\MerkleTree;
 use Jorijn\Bitcoin\Bolt12\Internal\TlvRecord;
 use Jorijn\Bitcoin\Bolt12\Model\BlindedHop;
@@ -56,6 +57,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TlvRecord::class)]
 #[CoversClass(MerkleTree::class)]
 #[UsesClass(ByteReader::class)]
+#[UsesClass(FieldReader::class)]
 #[UsesClass(Bech32::class)]
 #[UsesClass(Secp256k1::class)]
 #[UsesClass(Offer::class)]

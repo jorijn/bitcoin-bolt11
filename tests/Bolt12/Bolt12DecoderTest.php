@@ -27,6 +27,7 @@ use Jorijn\Bitcoin\Bolt12\Exception\UnknownRequiredFeatureException;
 use Jorijn\Bitcoin\Bolt12\Exception\UnknownRequiredFieldException;
 use Jorijn\Bitcoin\Bolt12\Internal\Bolt12String;
 use Jorijn\Bitcoin\Bolt12\Internal\ByteReader;
+use Jorijn\Bitcoin\Bolt12\Internal\FieldReader;
 use Jorijn\Bitcoin\Bolt12\Internal\MerkleTree;
 use Jorijn\Bitcoin\Bolt12\Internal\TlvRecord;
 use Jorijn\Bitcoin\Bolt12\Model\BlindedHop;
@@ -64,6 +65,7 @@ use Tests\Jorijn\Bitcoin\Bolt12\Support\Bolt12Builder;
 #[CoversClass(UnknownRequiredFieldException::class)]
 #[UsesClass(Bolt12String::class)]
 #[UsesClass(ByteReader::class)]
+#[UsesClass(FieldReader::class)]
 #[UsesClass(TlvRecord::class)]
 #[UsesClass(MerkleTree::class)]
 #[UsesClass(Bech32::class)]
@@ -162,7 +164,15 @@ final class Bolt12DecoderTest extends TestCase
     public function testDecodeRejectsAnUnknownPrefix(): void
     {
         $this->expectException(InvalidEncodingException::class);
-        $this->expectExceptionMessage('unknown BOLT #12 prefix "lnp"');
+        $this->expectExceptionMessage('unknown BOLT #12 prefix "lnx"');
+
+        $this->decoder->decode(Bolt12Builder::offer()->encode('lnx'));
+    }
+
+    public function testDecodePointsPayerProofsToTheirDecoder(): void
+    {
+        $this->expectException(InvalidEncodingException::class);
+        $this->expectExceptionMessage('payer proofs ("lnp1...") are decoded by PayerProofDecoder');
 
         $this->decoder->decode(Bolt12Builder::offer()->encode('lnp'));
     }

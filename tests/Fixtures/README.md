@@ -27,7 +27,10 @@ a new vector the decoder gets wrong fails the build.
   BOLT #11 vectors lenient mode accepts (`VALID_WHEN_LENIENT`).
 - `tests/Bolt12/Spec/Bolt12TestVectorsTest.php` runs the offers, format-string
   and signature vectors, and decodes the signed invoices inside the payer
-  proof vectors. Payer proofs themselves (`lnp1...`) are not supported yet.
+  proof vectors.
+- `tests/Bolt12/Spec/PayerProofTestVectorsTest.php` runs the payer proof
+  vectors. Each invalid vector must fail on the rule its reason names, and
+  the test writer must reproduce each valid vector byte for byte.
 
 ## BIP-340 test vectors
 
