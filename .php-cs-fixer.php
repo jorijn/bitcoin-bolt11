@@ -24,6 +24,9 @@ return (new PhpCsFixer\Config())
             'array_syntax' => ['syntax' => 'short'],
             'general_phpdoc_annotation_remove' => ['annotations' => ['expectedDeprecation']],
             'header_comment' => ['header' => $header],
+            // A typed "@var" right before "return" is how PHPStan learns the shape
+            // of decoded JSON; without this the rule turns it into a plain comment.
+            'phpdoc_to_comment' => ['allow_before_return_statement' => true],
             'method_argument_space' => [
                 'on_multiline' => 'ensure_fully_multiline',
             ],

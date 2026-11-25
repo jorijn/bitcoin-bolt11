@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class SignatureDoesNotMatchPayeePubkeyDecodeException extends PaymentRequestDecodeException {}
+/**
+ * The payment request names its payee (`n` field), but that key did not make the signature.
+ */
+final class SignatureDoesNotMatchPayeePubkeyDecodeException extends PaymentRequestDecodeException {}

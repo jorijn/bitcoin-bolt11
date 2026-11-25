@@ -11,5 +11,6 @@ That work is licensed under the
 [Creative Commons Attribution 4.0 International License](http://creativecommons.org/licenses/by/4.0/).
 
 To update: copy the file from a newer commit, update the hash above, and run
-`vendor/bin/phpunit --group spec-known-failure` to see whether the list of
-known failures in `tests/Spec/Bolt11TestVectorsTest.php` needs adjusting.
+`vendor/bin/phpunit tests/Spec`. Every vector is gated: a new vector the
+decoder gets wrong fails the build. `tests/Spec/Bolt11TestVectorsTest.php` also
+lists which invalid vectors lenient mode accepts (`VALID_WHEN_LENIENT`).

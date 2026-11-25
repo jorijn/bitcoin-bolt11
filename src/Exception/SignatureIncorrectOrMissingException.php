@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class SignatureIncorrectOrMissingException extends PaymentRequestDecodeException {}
+/**
+ * The signature is missing, malformed, or (in strict mode) not in low-S form.
+ */
+final class SignatureIncorrectOrMissingException extends PaymentRequestDecodeException {}

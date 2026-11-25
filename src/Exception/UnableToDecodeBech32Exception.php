@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class UnableToDecodeBech32Exception extends PaymentRequestDecodeException {}
+/**
+ * The string is not valid bech32: invalid characters, mixed case or a wrong checksum.
+ */
+final class UnableToDecodeBech32Exception extends PaymentRequestDecodeException {}

@@ -13,4 +13,8 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-abstract class PaymentRequestDecodeException extends \RuntimeException {}
+/**
+ * Thrown for every payment request that cannot be decoded, so one catch is
+ * enough for untrusted input. The subclasses say what was wrong with it.
+ */
+abstract class PaymentRequestDecodeException extends \RuntimeException implements ExceptionInterface {}

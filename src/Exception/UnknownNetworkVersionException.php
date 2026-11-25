@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class UnknownNetworkVersionException extends PaymentRequestDecodeException {}
+/**
+ * The prefix names a currency or network this library does not know.
+ */
+final class UnknownNetworkVersionException extends PaymentRequestDecodeException {}

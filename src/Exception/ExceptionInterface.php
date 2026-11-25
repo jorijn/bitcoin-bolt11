@@ -11,14 +11,9 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Jorijn\Bitcoin\Bolt11\Model;
+namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-interface TagInterface
-{
-    public function getTagName(): string;
-
-    /**
-     * @return mixed
-     */
-    public function getData();
-}
+/**
+ * Implemented by every exception this library throws.
+ */
+interface ExceptionInterface extends \Throwable {}
