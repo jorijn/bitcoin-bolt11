@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/jorijn/bitcoin-bolt11/compare/v2.0.0...v2.1.0) (2026-11-25)
+
+
+### Features
+
+* decode and verify BOLT 12 offers, invoice requests and invoices ([#21](https://github.com/jorijn/bitcoin-bolt11/issues/21)) ([938b75e](https://github.com/jorijn/bitcoin-bolt11/commit/938b75ead96440d1a1a8ebdfe8a585f2e0fdded9))
+
 ## [2.0.0](https://github.com/jorijn/bitcoin-bolt11/compare/v1.1.0...v2.0.0) (2026-11-25)
 
 
