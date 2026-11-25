@@ -23,7 +23,7 @@ class PaymentRequestDenormalizer
     /** @var TagDenormalizer */
     protected $tagDenormalizer;
 
-    public function __construct(TagDenormalizer $tagDenormalizer = null)
+    public function __construct(?TagDenormalizer $tagDenormalizer = null)
     {
         if (null === $tagDenormalizer) {
             $tagDenormalizer = new TagDenormalizer();

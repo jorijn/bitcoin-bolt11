@@ -27,7 +27,7 @@ trait DenormalizerTrait
             $method = 'set'.str_replace('_', '', ucwords($key, '_'));
 
             if (!method_exists($model, $method)) {
-                throw new UnableToDenormalizeException(sprintf('encountered denormalize error: method %s unavailable', $method));
+                throw new UnableToDenormalizeException(\sprintf('encountered denormalize error: method %s unavailable', $method));
             }
 
             $model->{$method}($value);

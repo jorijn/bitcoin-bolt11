@@ -23,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass \Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder
+ *
  * @covers ::__construct
  *
  * @internal
@@ -40,20 +41,88 @@ final class PaymentRequestDecoderTest extends TestCase
     }
 
     /**
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::getUnknownParser
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
+     * @covers ::wordsToUtf8
+     *
+     * @dataProvider provideSuccessScenariosCases
+     */
+    public function testSuccessScenarios(string $invoice, array $expectedResults): void
+    {
+        $result = $this->decoder->decode($invoice);
+
+        foreach ($expectedResults as $expectedKey => $expectedValue) {
+            self::assertArrayHasKey($expectedKey, $result);
+
+            if ('tags' === $expectedKey) {
+                foreach ($expectedValue as $expectedTag => $expectedTagValue) {
+                    $found = false;
+                    foreach ($result['tags'] as $tag) {
+                        if ('unknownTag' === $tag['tag_name']) { // support testing unspported tags
+                            $tag['tag_name'] = $tag['data']['tag_code'];
+                            $tag['data'] = $tag['data']['words'];
+                        }
+
+                        if ($tag['tag_name'] === $expectedTag) {
+                            $found = true;
+                            self::assertSame(
+                                $expectedTagValue,
+                                $tag['data'],
+                                \sprintf('tag "%s" does not match expected value', $expectedTag)
+                            );
+                        }
+                    }
+
+                    self::assertTrue($found);
+                }
+            } elseif (\is_array($expectedValue)) {
+                foreach ($expectedValue as $expectedSubKey => $expectedSubValue) {
+                    self::assertArrayHasKey($expectedSubKey, $expectedValue);
+                    self::assertSame(
+                        $expectedSubValue,
+                        $expectedValue[$expectedSubKey],
+                        \sprintf('"%s.%s" does not match expected value', $expectedKey, $expectedSubKey)
+                    );
+                }
+            } else {
+                self::assertSame(
+                    $expectedValue,
+                    $result[$expectedKey],
+                    \sprintf('"%s" does not match expected value', $expectedKey)
+                );
+            }
+        }
+    }
+
+    /**
      * These examples were taken from GitHub.
      *
      * @see https://github.com/lightningnetwork/lightning-rfc/blob/master/11-payment-encoding.md#examples
      *
      * @return array[]
      */
-    public function providerOfSuccessScenarios(): array
+    public static function provideSuccessScenariosCases(): iterable
     {
         return [
             'Invoice without expiry value' => [
                 'lnbc20u1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksp5m6kmam774klwlh4dhmhaatd7al02m0h0m6kmam774klwlh4dhmhs9qypqqqxqrrsscqpfck3fd5pdf7ermq4ajdr7eawzxzzspr8f2fqtw8kewj5f57l4uexxwgdy3xftzqm8a0yh7rnt6wsuzay8tqauq0cufzmamfu0y8zplhqpgpuvpj',
                 [
                     'prefix' => 'lnbc20u',
-                    'expiry_timestamp' => (1496314658 + 3600)
+                    'expiry_timestamp' => (1496314658 + 3600),
                 ],
             ],
             'Please make a donation of any amount using payment_hash 0001020304050607080900010203040506070809000102030405060708090102 to me @03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad' => [
@@ -280,11 +349,40 @@ final class PaymentRequestDecoderTest extends TestCase
     }
 
     /**
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::getUnknownParser
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::routingInfoParser
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
+     * @covers ::wordsToUtf8
+     *
+     * @dataProvider provideInvalidScenariosCases
+     */
+    public function testInvalidScenarios(string $invoice, string $expectedMessage, string $expectedInstanceOf): void
+    {
+        $this->expectExceptionMessage($expectedMessage);
+        $this->expectException($expectedInstanceOf);
+
+        $this->decoder->decode($invoice);
+    }
+
+    /**
      * These examples were taken from GitHub.
      *
      * @see https://github.com/lightningnetwork/lightning-rfc/blob/master/11-payment-encoding.md#examples-of-invalid-invoices
      */
-    public function providerOfInvalidScenarios(): array
+    public static function provideInvalidScenariosCases(): iterable
     {
         return [
             'Bech32 checksum is invalid.' => [
@@ -323,100 +421,5 @@ final class PaymentRequestDecoderTest extends TestCase
                 InvalidAmountException::class,
             ],
         ];
-    }
-
-    /**
-     * @covers ::convert
-     * @covers ::decode
-     * @covers ::extractVerifyPublicKey
-     * @covers ::fallbackAddressParser
-     * @covers ::getNetworkFromPrefix
-     * @covers ::getUnknownParser
-     * @covers ::hrpToMillisat
-     * @covers ::hrpToSat
-     * @covers ::initializeTagParsers
-     * @covers ::parseTagsFromWords
-     * @covers ::routingInfoParser
-     * @covers ::tagsContainItem
-     * @covers ::tagsItems
-     * @covers ::wordsToBuffer
-     * @covers ::wordsToHex
-     * @covers ::wordsToIntBE
-     * @covers ::wordsToUtf8
-     * @dataProvider providerOfSuccessScenarios
-     */
-    public function testSuccessScenarios(string $invoice, array $expectedResults): void
-    {
-        $result = $this->decoder->decode($invoice);
-
-        foreach ($expectedResults as $expectedKey => $expectedValue) {
-            static::assertArrayHasKey($expectedKey, $result);
-
-            if ('tags' === $expectedKey) {
-                foreach ($expectedValue as $expectedTag => $expectedTagValue) {
-                    $found = false;
-                    foreach ($result['tags'] as $tag) {
-                        if ('unknownTag' === $tag['tag_name']) { // support testing unspported tags
-                            $tag['tag_name'] = $tag['data']['tag_code'];
-                            $tag['data'] = $tag['data']['words'];
-                        }
-
-                        if ($tag['tag_name'] === $expectedTag) {
-                            $found = true;
-                            static::assertSame(
-                                $expectedTagValue,
-                                $tag['data'],
-                                sprintf('tag "%s" does not match expected value', $expectedTag)
-                            );
-                        }
-                    }
-
-                    static::assertTrue($found);
-                }
-            } elseif (\is_array($expectedValue)) {
-                foreach ($expectedValue as $expectedSubKey => $expectedSubValue) {
-                    static::assertArrayHasKey($expectedSubKey, $expectedValue);
-                    static::assertSame(
-                        $expectedSubValue,
-                        $expectedValue[$expectedSubKey],
-                        sprintf('"%s.%s" does not match expected value', $expectedKey, $expectedSubKey)
-                    );
-                }
-            } else {
-                static::assertSame(
-                    $expectedValue,
-                    $result[$expectedKey],
-                    sprintf('"%s" does not match expected value', $expectedKey)
-                );
-            }
-        }
-    }
-
-    /**
-     * @covers ::convert
-     * @covers ::decode
-     * @covers ::extractVerifyPublicKey
-     * @covers ::fallbackAddressParser
-     * @covers ::getNetworkFromPrefix
-     * @covers ::getUnknownParser
-     * @covers ::hrpToMillisat
-     * @covers ::hrpToSat
-     * @covers ::initializeTagParsers
-     * @covers ::parseTagsFromWords
-     * @covers ::routingInfoParser
-     * @covers ::tagsContainItem
-     * @covers ::tagsItems
-     * @covers ::wordsToBuffer
-     * @covers ::wordsToHex
-     * @covers ::wordsToIntBE
-     * @covers ::wordsToUtf8
-     * @dataProvider providerOfInvalidScenarios
-     */
-    public function testInvalidScenarios(string $invoice, string $expectedMessage, string $expectedInstanceOf): void
-    {
-        $this->expectExceptionMessage($expectedMessage);
-        $this->expectException($expectedInstanceOf);
-
-        $this->decoder->decode($invoice);
     }
 }
