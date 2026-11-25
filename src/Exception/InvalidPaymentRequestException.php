@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class InvalidPaymentRequestException extends PaymentRequestDecodeException {}
+/**
+ * The payment request breaks a rule of BOLT #11 that has no more specific exception.
+ */
+final class InvalidPaymentRequestException extends PaymentRequestDecodeException {}

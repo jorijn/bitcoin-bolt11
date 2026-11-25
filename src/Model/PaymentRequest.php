@@ -13,124 +13,128 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Model;
 
-use BitWasp\Bitcoin\Network\NetworkInterface;
-
-class PaymentRequest
+/**
+ * A decoded and verified BOLT #11 payment request.
+ *
+ * Immutable: every value comes from the signed invoice, so nothing here can
+ * change without invalidating the signature. Hex strings are lowercase.
+ */
+final readonly class PaymentRequest implements \JsonSerializable
 {
-    /** @var string */
-    protected $prefix;
+    /** Expiry in seconds when the invoice has no `x` field. */
+    public const DEFAULT_EXPIRY = 3600;
 
-    /** @var NetworkInterface */
-    protected $network;
+    /** min_final_cltv_expiry_delta when the invoice has no `c` field. */
+    public const DEFAULT_MIN_FINAL_CLTV_EXPIRY_DELTA = 18;
 
-    /** @var null|int */
-    protected $satoshis;
-
-    /** @var null|int */
-    protected $milliSatoshis;
-
-    /** @var int */
-    protected $timestamp;
-
-    /** @var \DateTimeInterface */
-    protected $timestampDateTime;
-
-    /** @var string */
-    protected $payeeNodeKey;
-
-    /** @var string */
-    protected $signature;
-
-    /** @var int */
-    protected $recoveryFlag;
-
-    /** @var TagInterface[] */
-    protected $tags = [];
-
-    /** @var null|int */
-    protected $expiryTimestamp;
-
-    /** @var null|\DateTimeInterface */
-    protected $expiryDateTime;
+    /**
+     * @param string                $prefix            the human-readable part, lowercase: "lnbc2500u"
+     * @param ?int                  $milliSatoshis     null for an invoice without an amount
+     * @param string                $payeeNodeKey      hex, 33 bytes: from the `n` field, or recovered from the signature
+     * @param string                $signature         hex, 64 bytes: r || s
+     * @param string                $paymentHash       hex, 32 bytes (`p` field)
+     * @param ?string               $paymentSecret     hex, 32 bytes (`s` field); only null in lenient mode
+     * @param ?string               $description       UTF-8 (`d` field)
+     * @param ?string               $descriptionHash   hex, 32 bytes: SHA-256 of a description passed some other way (`h` field)
+     * @param int                   $expiry            seconds after the timestamp (`x` field)
+     * @param ?string               $metadata          hex (`m` field), to pass along as payment_metadata
+     * @param list<FallbackAddress> $fallbackAddresses most preferred first
+     * @param list<RouteHint>       $routeHints        most preferred first
+     * @param list<UnknownField>    $unknownFields     tagged fields this library does not interpret
+     */
+    public function __construct(
+        private string $prefix,
+        private Network $network,
+        private ?int $milliSatoshis,
+        private \DateTimeImmutable $timestamp,
+        private string $payeeNodeKey,
+        private string $signature,
+        private int $recoveryFlag,
+        private string $paymentHash,
+        private ?string $paymentSecret = null,
+        private ?string $description = null,
+        private ?string $descriptionHash = null,
+        private int $expiry = self::DEFAULT_EXPIRY,
+        private int $minFinalCltvExpiryDelta = self::DEFAULT_MIN_FINAL_CLTV_EXPIRY_DELTA,
+        private ?string $metadata = null,
+        private Features $features = new Features(),
+        private array $fallbackAddresses = [],
+        private array $routeHints = [],
+        private array $unknownFields = [],
+    ) {}
 
     public function getPrefix(): string
     {
         return $this->prefix;
     }
 
-    public function setPrefix(string $prefix): void
-    {
-        $this->prefix = $prefix;
-    }
-
-    public function getNetwork(): NetworkInterface
+    public function getNetwork(): Network
     {
         return $this->network;
     }
 
-    public function setNetwork(NetworkInterface $network): void
-    {
-        $this->network = $network;
-    }
-
-    public function getSatoshis(): ?int
-    {
-        return $this->satoshis;
-    }
-
-    public function setSatoshis(?int $satoshis): void
-    {
-        $this->satoshis = $satoshis;
-    }
-
+    /**
+     * The amount in millisatoshis, the unit Lightning pays in. Null when the
+     * invoice leaves the amount to the payer (a donation, for example).
+     */
     public function getMilliSatoshis(): ?int
     {
         return $this->milliSatoshis;
     }
 
-    public function setMilliSatoshis(?int $milliSatoshis): void
+    /**
+     * The amount in whole satoshis, rounded down: an invoice for 1500
+     * millisatoshis returns 1. Use getMilliSatoshis() for the exact amount.
+     */
+    public function getSatoshis(): ?int
     {
-        $this->milliSatoshis = $milliSatoshis;
+        return null === $this->milliSatoshis ? null : intdiv($this->milliSatoshis, 1000);
     }
 
-    public function getTimestamp(): int
+    /**
+     * When the invoice was created, in UTC.
+     */
+    public function getTimestamp(): \DateTimeImmutable
     {
         return $this->timestamp;
     }
 
-    public function setTimestamp(int $timestamp): void
+    /**
+     * Seconds after the timestamp until the invoice expires.
+     */
+    public function getExpiry(): int
     {
-        $this->timestamp = $timestamp;
+        return $this->expiry;
     }
 
-    public function getTimestampDateTime(): \DateTimeInterface
+    /**
+     * The moment the invoice expires, in UTC; after it, BOLT #11 says the
+     * payer should not pay and the payee should not accept.
+     */
+    public function getExpiresAt(): \DateTimeImmutable
     {
-        return $this->timestampDateTime;
+        return new \DateTimeImmutable('@'.($this->timestamp->getTimestamp() + $this->expiry));
     }
 
-    public function setTimestampString(string $timestampString): void
+    public function isExpired(?\DateTimeInterface $now = null): bool
     {
-        $this->timestampDateTime = new \DateTime($timestampString);
+        return ($now ?? new \DateTimeImmutable())->getTimestamp() >= $this->getExpiresAt()->getTimestamp();
     }
 
+    /**
+     * The payee's public key, hex encoded: the node to pay.
+     */
     public function getPayeeNodeKey(): string
     {
         return $this->payeeNodeKey;
     }
 
-    public function setPayeeNodeKey(string $payeeNodeKey): void
-    {
-        $this->payeeNodeKey = $payeeNodeKey;
-    }
-
+    /**
+     * The signature, hex encoded: 32 bytes r followed by 32 bytes s.
+     */
     public function getSignature(): string
     {
         return $this->signature;
-    }
-
-    public function setSignature(string $signature): void
-    {
-        $this->signature = $signature;
     }
 
     public function getRecoveryFlag(): int
@@ -138,71 +142,160 @@ class PaymentRequest
         return $this->recoveryFlag;
     }
 
-    public function setRecoveryFlag(int $recoveryFlag): void
+    /**
+     * The hash whose preimage is the proof of payment, hex encoded.
+     */
+    public function getPaymentHash(): string
     {
-        $this->recoveryFlag = $recoveryFlag;
+        return $this->paymentHash;
     }
 
     /**
-     * @return TagInterface[]
+     * The payment secret, hex encoded. Only null for an invoice decoded in
+     * lenient mode; strict mode rejects an invoice without one.
      */
-    public function getTags(): array
+    public function getPaymentSecret(): ?string
     {
-        return $this->tags;
-    }
-
-    public function setTags(array $tags): void
-    {
-        $this->tags = $tags;
-    }
-
-    public function findTagByName(string $name): ?TagInterface
-    {
-        foreach ($this->getTags() as $tag) {
-            if ($tag->getTagName() === $name) {
-                return $tag;
-            }
-        }
-
-        return null;
+        return $this->paymentSecret;
     }
 
     /**
-     * Returns every tag with this name, in invoice order.
+     * The description, if the invoice has one inline.
      *
-     * Some fields may appear more than once: an invoice can carry several
-     * routing hints (`r`) and fallback addresses (`f`), and findTagByName()
-     * only ever returns the first of them.
-     *
-     * @return TagInterface[]
+     * It comes from whoever made the invoice: escape it before you show it in
+     * HTML or put it in a query. In lenient mode it may not be valid UTF-8.
      */
-    public function findTagsByName(string $name): array
+    public function getDescription(): ?string
     {
-        return array_values(array_filter(
-            $this->getTags(),
-            static function (TagInterface $tag) use ($name): bool {
-                return $tag->getTagName() === $name;
-            }
-        ));
+        return $this->description;
     }
 
-    public function getExpiryTimestamp(): ?int
+    /**
+     * The SHA-256 of a description that was passed some other way, hex encoded.
+     */
+    public function getDescriptionHash(): ?string
     {
-        return $this->expiryTimestamp;
+        return $this->descriptionHash;
     }
 
-    public function setExpiryTimestamp(?int $expiryTimestamp): void
+    /**
+     * Whether a description matches the description hash (`h` field).
+     * BOLT #11 requires this check before paying an invoice that has one.
+     * False when the invoice has no description hash.
+     */
+    public function verifyDescriptionHash(string $description): bool
     {
-        $this->expiryTimestamp = $expiryTimestamp;
+        return null !== $this->descriptionHash && hash_equals($this->descriptionHash, hash('sha256', $description));
     }
 
-    public function getExpiryDateTime(): ?\DateTimeInterface
+    public function getMinFinalCltvExpiryDelta(): int
     {
-        return $this->expiryDateTime;
+        return $this->minFinalCltvExpiryDelta;
     }
 
-    public function setExpiryDateTime(?string $expiryDateTime): void
+    /**
+     * Payment metadata (`m` field), hex encoded: the payer must pass it along
+     * as payment_metadata.
+     */
+    public function getMetadata(): ?string
     {
-        $this->expiryDateTime = null !== $expiryDateTime ? new \DateTime($expiryDateTime) : null;
+        return $this->metadata;
+    }
+
+    public function getFeatures(): Features
+    {
+        return $this->features;
+    }
+
+    /**
+     * On-chain addresses to fall back to, most preferred first. Addresses with
+     * a version this library does not know are left out, as BOLT #11 requires.
+     *
+     * @return list<FallbackAddress>
+     */
+    public function getFallbackAddresses(): array
+    {
+        return $this->fallbackAddresses;
+    }
+
+    /**
+     * Private routes to the payee, most preferred first.
+     *
+     * @return list<RouteHint>
+     */
+    public function getRouteHints(): array
+    {
+        return $this->routeHints;
+    }
+
+    /**
+     * Tagged fields this library does not interpret.
+     *
+     * @return list<UnknownField>
+     */
+    public function getUnknownFields(): array
+    {
+        return $this->unknownFields;
+    }
+
+    /**
+     * Every value as plain PHP data: scalars, null and nested arrays. Times are
+     * Unix timestamps. The keys are part of the backward compatibility promise.
+     *
+     * @return array{
+     *     prefix: string,
+     *     network: string,
+     *     milli_satoshis: ?int,
+     *     satoshis: ?int,
+     *     timestamp: int,
+     *     expiry: int,
+     *     expiry_timestamp: int,
+     *     payee_node_key: string,
+     *     signature: string,
+     *     recovery_flag: int,
+     *     payment_hash: string,
+     *     payment_secret: ?string,
+     *     description: ?string,
+     *     description_hash: ?string,
+     *     min_final_cltv_expiry_delta: int,
+     *     metadata: ?string,
+     *     features: list<int>,
+     *     fallback_addresses: list<array{version: int, program: string, address: string}>,
+     *     route_hints: list<list<array{public_key: string, short_channel_id: string, fee_base_msat: int, fee_proportional_millionths: int, cltv_expiry_delta: int}>>,
+     *     unknown_fields: list<array{type: int, words: list<int>}>,
+     * }
+     */
+    public function toArray(): array
+    {
+        return [
+            'prefix' => $this->prefix,
+            'network' => $this->network->value,
+            'milli_satoshis' => $this->milliSatoshis,
+            'satoshis' => $this->getSatoshis(),
+            'timestamp' => $this->timestamp->getTimestamp(),
+            'expiry' => $this->expiry,
+            'expiry_timestamp' => $this->getExpiresAt()->getTimestamp(),
+            'payee_node_key' => $this->payeeNodeKey,
+            'signature' => $this->signature,
+            'recovery_flag' => $this->recoveryFlag,
+            'payment_hash' => $this->paymentHash,
+            'payment_secret' => $this->paymentSecret,
+            'description' => $this->description,
+            'description_hash' => $this->descriptionHash,
+            'min_final_cltv_expiry_delta' => $this->minFinalCltvExpiryDelta,
+            'metadata' => $this->metadata,
+            'features' => $this->features->getBits(),
+            'fallback_addresses' => array_map(static fn (FallbackAddress $address): array => $address->toArray(), $this->fallbackAddresses),
+            'route_hints' => array_map(static fn (RouteHint $hint): array => $hint->toArray(), $this->routeHints),
+            'unknown_fields' => array_map(static fn (UnknownField $field): array => $field->toArray(), $this->unknownFields),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed> the same as toArray()
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 }

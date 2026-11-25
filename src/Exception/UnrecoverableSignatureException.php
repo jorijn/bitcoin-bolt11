@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class UnrecoverableSignatureException extends PaymentRequestDecodeException {}
+/**
+ * No public key can be recovered from the signature.
+ */
+final class UnrecoverableSignatureException extends PaymentRequestDecodeException {}

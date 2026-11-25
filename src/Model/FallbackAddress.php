@@ -13,25 +13,36 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Model;
 
-class FallbackAddress
+/**
+ * An on-chain address to pay to when the Lightning payment fails (`f` field).
+ */
+final readonly class FallbackAddress
 {
-    /** @var int */
-    protected $code;
+    public const VERSION_P2PKH = 17;
+    public const VERSION_P2SH = 18;
 
-    /** @var string */
-    protected $address;
+    /**
+     * @param int    $version 0 to 16 for a segwit witness version, 17 for P2PKH, 18 for P2SH
+     * @param string $program hex: the witness program, or the 20-byte hash for P2PKH and P2SH
+     * @param string $address the address in the form a wallet shows it
+     */
+    public function __construct(
+        private int $version,
+        private string $program,
+        private string $address,
+    ) {}
 
-    /** @var string */
-    protected $addressHash;
-
-    public function getCode(): int
+    public function getVersion(): int
     {
-        return $this->code;
+        return $this->version;
     }
 
-    public function setCode(int $code): void
+    /**
+     * The witness program or hash, hex encoded.
+     */
+    public function getProgram(): string
     {
-        $this->code = $code;
+        return $this->program;
     }
 
     public function getAddress(): string
@@ -39,18 +50,16 @@ class FallbackAddress
         return $this->address;
     }
 
-    public function setAddress(string $address): void
+    public function isSegwit(): bool
     {
-        $this->address = $address;
+        return $this->version <= 16;
     }
 
-    public function getAddressHash(): string
+    /**
+     * @return array{version: int, program: string, address: string}
+     */
+    public function toArray(): array
     {
-        return $this->addressHash;
-    }
-
-    public function setAddressHash(string $addressHash): void
-    {
-        $this->addressHash = $addressHash;
+        return ['version' => $this->version, 'program' => $this->program, 'address' => $this->address];
     }
 }

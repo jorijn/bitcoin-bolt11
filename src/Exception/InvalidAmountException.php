@@ -13,4 +13,7 @@ declare(strict_types=1);
 
 namespace Jorijn\Bitcoin\Bolt11\Exception;
 
-class InvalidAmountException extends PaymentRequestDecodeException {}
+/**
+ * The amount in the human-readable part is malformed or out of range.
+ */
+final class InvalidAmountException extends PaymentRequestDecodeException {}
