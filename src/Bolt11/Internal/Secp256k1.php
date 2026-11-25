@@ -144,6 +144,79 @@ final class Secp256k1
     }
 
     /**
+     * Verifies a BIP-340 Schnorr signature, as BOLT #12 uses them.
+     *
+     * BIP-340 keys are x-only: the 32-byte x coordinate of a point whose y is
+     * taken to be even. BOLT #12 stores keys as 33-byte compressed points
+     * (`point`), so callers pass those, and only the x coordinate counts; this
+     * matches what the Lightning implementations do.
+     *
+     * @param string $message   the signed message; BOLT #12 signs a 32-byte tagged hash
+     * @param string $signature 64 bytes: the x coordinate of R, then s
+     * @param string $publicKey 32-byte x-only key, or a 33-byte compressed point
+     *
+     * @see https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#verification
+     */
+    public static function verifySchnorr(string $message, string $signature, string $publicKey): bool
+    {
+        $curve = self::instance();
+
+        if (33 === \strlen($publicKey)) {
+            // A compressed point must still be a valid one: accepting any
+            // prefix byte would let two different byte strings name one key.
+            if (null === $curve->decompress($publicKey)) {
+                return false;
+            }
+
+            $publicKey = substr($publicKey, 1);
+        }
+
+        if (32 !== \strlen($publicKey) || 64 !== \strlen($signature)) {
+            return false;
+        }
+
+        $x = gmp_import($publicKey);
+        if (gmp_cmp($x, $curve->p) >= 0) {
+            return false;
+        }
+
+        // lift_x: the point with this x and an even y.
+        $point = $curve->liftX($x, false);
+        if (null === $point) {
+            return false;
+        }
+
+        $r = gmp_import(substr($signature, 0, 32));
+        $s = gmp_import(substr($signature, 32));
+        if (gmp_cmp($r, $curve->p) >= 0 || gmp_cmp($s, $curve->n) >= 0) {
+            return false;
+        }
+
+        $e = $curve->mod(gmp_import(self::taggedHash('BIP0340/challenge', substr($signature, 0, 32).$publicKey.$message)), $curve->n);
+
+        // R = s·G − e·P must exist, have an even y, and have r as its x.
+        $result = $curve->multiplyAndAdd($s, $curve->generator, $curve->mod(-$e, $curve->n), $point);
+
+        return null !== $result
+            && !gmp_testbit($result[1], 0)
+            && 0 === gmp_cmp($result[0], $r);
+    }
+
+    /**
+     * BIP-340 tagged hash: SHA256(SHA256(tag) || SHA256(tag) || message).
+     * The tag makes a hash made for one purpose useless for any other, so a
+     * signature over one kind of message can never pass as another.
+     *
+     * @return string 32 bytes
+     */
+    public static function taggedHash(string $tag, string $message): string
+    {
+        $tagHash = hash('sha256', $tag, true);
+
+        return hash('sha256', $tagHash.$tagHash.$message, true);
+    }
+
+    /**
      * Whether s is at most n/2. For every signature (r, s), (r, n − s) is
      * valid too; requiring the low one makes signatures non-malleable.
      *

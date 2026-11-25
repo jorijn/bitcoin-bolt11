@@ -1,13 +1,20 @@
-# A PHP library for BOLT #11: Invoice Protocol for Lightning Payments
+# A PHP library for Lightning payment requests: BOLT #11 invoices and BOLT #12 offers
 
 [![Latest Stable Version](https://img.shields.io/packagist/v/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 [![Total Downloads](https://img.shields.io/packagist/dt/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 [![License](https://img.shields.io/github/license/jorijn/bitcoin-bolt11.svg)](https://packagist.org/packages/jorijn/bitcoin-bolt11)
 [![CI](https://github.com/Jorijn/bitcoin-bolt11/actions/workflows/test.yml/badge.svg)](https://github.com/Jorijn/bitcoin-bolt11/actions/workflows/test.yml)
 
-Decodes and verifies [BOLT #11](https://github.com/lightning/bolts/blob/master/11-payment-encoding.md) Lightning payment requests into immutable PHP objects. It checks the bech32 checksum and the secp256k1 signature, and enforces the rules the specification sets for readers. It passes every [official test vector](tests/Fixtures/README.md).
+Decodes and verifies Lightning payment requests into immutable PHP objects:
 
-The library is pure PHP with no Composer dependencies: the bech32, base58 and secp256k1 code it needs is built in, on top of `ext-gmp`. It decodes; it does not create or sign invoices.
+* [BOLT #11](https://github.com/lightning/bolts/blob/master/11-payment-encoding.md) invoices (`lnbc1...`): checks the bech32 checksum and the secp256k1 signature.
+* [BOLT #12](https://github.com/lightning/bolts/blob/master/12-offer-encoding.md) offers (`lno1...`), invoice requests (`lnr1...`) and invoices (`lni1...`): checks the TLV encoding and the BIP-340 Schnorr signature. See [BOLT #12](#bolt-12-offers-invoice-requests-and-invoices).
+
+Both enforce the rules the specifications set for readers, and pass every [official test vector](tests/Fixtures/README.md).
+
+The library is pure PHP with no Composer dependencies: the bech32, base58 and secp256k1 code it needs is built in, on top of `ext-gmp`. It decodes; it does not create or sign anything.
+
+The package is still called `jorijn/bitcoin-bolt11`, after what it started with; renaming it would make every user change their `composer.json` for no gain. BOLT #11 lives in the `Jorijn\Bitcoin\Bolt11` namespace, BOLT #12 in `Jorijn\Bitcoin\Bolt12`.
 
 Upgrading from 1.x? See [UPGRADE-2.0.md](UPGRADE-2.0.md).
 
@@ -19,7 +26,7 @@ composer require jorijn/bitcoin-bolt11
 
 Requires 64-bit PHP 8.3 or later with the `gmp` extension.
 
-## Usage
+## BOLT #11 invoices
 
 ```php
 use Jorijn\Bitcoin\Bolt11\PaymentRequestDecoder;
@@ -142,9 +149,74 @@ Catch a subclass when you want to tell reasons apart:
 
 `getMilliSatoshis()` returns the exact amount; 1000 millisatoshis is 1 satoshi. `getSatoshis()` rounds down to whole satoshis: an invoice for 1500 millisatoshis returns `1`. Both return `null` for an invoice without an amount, where the payer chooses how much to send.
 
+## BOLT #12: offers, invoice requests and invoices
+
+An offer is a reusable payment code, for a web page or a QR code. A payer's wallet asks the issuer for an invoice over the Lightning network (an invoice request) and pays the invoice it gets back. This library decodes all three; fetching an invoice for an offer is out of scope, because that takes onion messages through a Lightning node.
+
+```php
+use Jorijn\Bitcoin\Bolt12\Bolt12Decoder;
+use Jorijn\Bitcoin\Bolt12\Model\Chain;
+
+$offer = (new Bolt12Decoder())->decodeOffer('lno1qcp4256ypqpzwyq2p32x2um5ypmx2cm5dae8x93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj');
+
+$offer->getDescription();    // 'Test vectors'
+$offer->getAmount();         // 10000
+$offer->getCurrency();       // 'USD': the amount is in cents; null means millisatoshis
+$offer->getMilliSatoshis();  // null, as the amount is in another currency
+$offer->getIssuerId();       // '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619'
+$offer->getChains();         // [Chain::BITCOIN]: an offer without chains is for Bitcoin
+$offer->isExpired();         // false
+```
+
+`decodeInvoiceRequest()` and `decodeInvoice()` work the same way, and `decode()` takes any of the three and picks the type by its prefix. An invoice request carries all fields of its offer and an invoice all fields of its request, so `$invoice->getInvoiceRequest()` and `$invoice->getOffer()` give those back:
+
+```php
+$invoice = (new Bolt12Decoder())->decodeInvoice($lni);
+
+$invoice->getAmount();                       // millisatoshis
+$invoice->getPaymentHash();
+$invoice->getNodeId();                       // the key that signed it
+$invoice->getExpiresAt();                    // created at + relative expiry (default two hours)
+$invoice->getPaths()[0]->getFeeBaseMsat();   // each blinded path with its fees and limits
+$invoice->getInvoiceRequest()->getPayerNote();
+$invoice->getOffer()->getDescription();
+```
+
+Every model has `toArray()` and implements `JsonSerializable`. Binary values are lowercase hex, times are `DateTimeImmutable` in UTC. Chain hashes are hex in the byte order BOLT #12 uses; `Chain::toNetwork()` maps the Bitcoin ones to the `Network` enum.
+
+### What the decoder checks, and what it leaves to you
+
+The decoder enforces every rule for readers that can be checked from the string alone: the TLV encoding, which types each message may contain, unknown even types and feature bits, valid UTF-8, valid public keys, how the fields of an offer combine, and the signature of invoice requests (by `invreq_payer_id`) and invoices (by `invoice_node_id`). For an invoice request it also checks the quantity and the chain against the offer it copies, and the amount when the offer's price is in millisatoshis. An invoice for an offer with an issuer id must be signed by that id.
+
+Some rules depend on context it does not have, so they are yours:
+
+* **Expiry.** Expired offers and invoices are decoded, so they can still be shown. Check `isExpired()` before requesting or paying.
+* **The chain.** Check that `getChains()` or `getChain()` is a chain you support.
+* **Whether an invoice answers your request.** Compare `$invoice->getInvoiceRequest()` with the request you sent: the specification requires every request field to match. For an offer without an issuer id, check that `getNodeId()` is the final blinded node id of the path you sent the request through.
+* **Prices in another currency.** An amount in USD cannot be compared to millisatoshis without an exchange rate, so the decoder does not try.
+
+An invoice request without an offer (a refund, say) is published by its sender, and the specification tells that writer not to sign it. The decoder accepts such a request without a signature, and verifies the signature when there is one. A request for an offer must always be signed.
+
+Payer proofs (`lnp1...`) are not supported yet.
+
+### Handling invalid BOLT #12 strings
+
+Every BOLT #12 exception extends `Jorijn\Bitcoin\Bolt12\Exception\Bolt12DecodeException`, which implements the same `ExceptionInterface` as the BOLT #11 exceptions, so one `catch` covers both:
+
+| Exception                         | When                                                                          |
+|-----------------------------------|-------------------------------------------------------------------------------|
+| `InvalidEncodingException`        | invalid characters, mixed case, a stray `+`, bad padding, or the wrong prefix |
+| `MalformedTlvException`           | a broken TLV stream, or a field with the wrong length or layout               |
+| `UnknownRequiredFieldException`   | an even TLV type this library does not know; `getType()` says which           |
+| `UnknownRequiredFeatureException` | an even feature bit this library does not know; `getFeatureBits()` lists them |
+| `InvalidSignatureException`       | a missing signature, or one that does not match the key                       |
+| `InvalidFieldException`           | any other rule of the specification                                           |
+
+The description, the issuer and the payer note are text chosen by whoever wrote the message, and nothing vouches for them. An issuer that says "example.com" is not proof that the offer comes from example.com. Escape them like any other untrusted input.
+
 ## Security notes
 
-The signature check is what ties an invoice to its payee, so it is never skipped and never relaxed. The secp256k1 code in this library is **not constant-time**. That is fine for what it does: verifying a signature or recovering a public key only touches public data, so there is no secret that timing could leak. Do not use it to sign anything.
+The signature check is what ties an invoice to its payee, so it is never skipped and never relaxed. The secp256k1 code in this library (ECDSA for BOLT #11, BIP-340 Schnorr for BOLT #12) is **not constant-time**. That is fine for what it does: verifying a signature or recovering a public key only touches public data, so there is no secret that timing could leak. Do not use it to sign anything.
 
 Invoices can be long (a few thousand characters with many route hints), but decoding is linear in their length and the decoder rejects fields that do not fit.
 

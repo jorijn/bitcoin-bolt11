@@ -17,6 +17,7 @@ use Jorijn\Bitcoin\Bolt11\Internal\Secp256k1;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Tests\Jorijn\Bitcoin\Bolt12\Support\Bolt12Builder;
 
 /**
  * The spec vectors already exercise recovery end to end; these cover the
@@ -175,6 +176,93 @@ final class Secp256k1Test extends TestCase
         self::assertFalse(Secp256k1::verify(self::bin(self::HASH), 'not a signature', $publicKey));
         self::assertFalse(Secp256k1::verify(self::bin(self::HASH), str_repeat("\0", 64), $publicKey));
         self::assertFalse(Secp256k1::verify(hash('sha256', 'another message', true), self::bin(self::SIGNATURE), $publicKey));
+    }
+
+    /**
+     * Every official BIP-340 vector, valid and invalid: wrong keys, R or s
+     * out of range, R with an odd y, messages of other lengths.
+     *
+     * @param array{index: string, secretKey: string, publicKey: string, auxRand: string, message: string, signature: string, valid: bool} $vector
+     */
+    #[DataProvider('provideBip340Vectors')]
+    public function testVerifiesBip340Vectors(array $vector): void
+    {
+        self::assertSame(
+            $vector['valid'],
+            Secp256k1::verifySchnorr(self::bin($vector['message']), self::bin($vector['signature']), self::bin($vector['publicKey'])),
+            'BIP-340 vector '.$vector['index'],
+        );
+    }
+
+    /**
+     * The BOLT #12 tests sign with Bolt12Builder; reproducing the official
+     * signatures byte for byte shows that signer follows BIP-340 exactly.
+     *
+     * @param array{index: string, secretKey: string, publicKey: string, auxRand: string, message: string, signature: string, valid: bool} $vector
+     */
+    #[DataProvider('provideBip340Vectors')]
+    public function testTestSignerReproducesBip340Signatures(array $vector): void
+    {
+        if ('' === $vector['secretKey']) {
+            $this->expectNotToPerformAssertions();
+
+            return;
+        }
+
+        self::assertSame(
+            strtolower($vector['signature']),
+            bin2hex(Bolt12Builder::schnorrSign(self::bin($vector['message']), $vector['secretKey'], self::bin($vector['auxRand']))),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array{index: string, secretKey: string, publicKey: string, auxRand: string, message: string, signature: string, valid: bool}}>
+     */
+    public static function provideBip340Vectors(): iterable
+    {
+        $lines = file(__DIR__.'/../../Fixtures/bip340-test-vectors.csv', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        self::assertIsArray($lines);
+        array_shift($lines);
+
+        foreach ($lines as $line) {
+            $columns = str_getcsv($line, ',', '"', '');
+
+            yield 'vector '.$columns[0] => [[
+                'index' => (string) $columns[0],
+                'secretKey' => (string) $columns[1],
+                'publicKey' => (string) $columns[2],
+                'auxRand' => (string) $columns[3],
+                'message' => (string) $columns[4],
+                'signature' => (string) $columns[5],
+                'valid' => 'TRUE' === $columns[6],
+            ]];
+        }
+    }
+
+    public function testSchnorrAcceptsCompressedKeysByTheirXCoordinate(): void
+    {
+        $message = str_repeat("\x01", 32);
+        $secretKey = '4242424242424242424242424242424242424242424242424242424242424242';
+        $signature = Bolt12Builder::schnorrSign($message, $secretKey, str_repeat("\0", 32));
+        $compressed = self::bin(Bolt12Builder::publicKey($secretKey));
+
+        // This key has an odd y (prefix 03); BIP-340 only looks at x.
+        self::assertSame("\x03", $compressed[0]);
+        self::assertTrue(Secp256k1::verifySchnorr($message, $signature, $compressed));
+        self::assertTrue(Secp256k1::verifySchnorr($message, $signature, substr($compressed, 1)));
+        self::assertTrue(Secp256k1::verifySchnorr($message, $signature, "\x02".substr($compressed, 1)));
+
+        self::assertFalse(Secp256k1::verifySchnorr($message, $signature, "\x04".substr($compressed, 1)), 'not a compressed key');
+        self::assertFalse(Secp256k1::verifySchnorr($message, $signature, substr($compressed, 2)), 'too short');
+        self::assertFalse(Secp256k1::verifySchnorr($message, substr($signature, 1), $compressed), 'signature too short');
+        self::assertFalse(Secp256k1::verifySchnorr(str_repeat("\x02", 32), $signature, $compressed), 'other message');
+    }
+
+    public function testTaggedHash(): void
+    {
+        $tag = hash('sha256', 'BIP0340/challenge', true);
+
+        self::assertSame(hash('sha256', $tag.$tag.'message', true), Secp256k1::taggedHash('BIP0340/challenge', 'message'));
     }
 
     private static function bin(string $hex): string

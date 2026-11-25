@@ -11,9 +11,10 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Jorijn\Bitcoin\Bolt11\Exception;
+namespace Jorijn\Bitcoin\Bolt12\Exception;
 
 /**
- * Implemented by every exception this library throws.
+ * The signature is missing or does not match the key that must have signed
+ * the message (the payer for invoice requests, the node for invoices).
  */
-interface ExceptionInterface extends \Throwable {}
+final class InvalidSignatureException extends Bolt12DecodeException {}
