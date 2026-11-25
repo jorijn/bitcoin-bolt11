@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Tests\Jorijn\Bitcoin\Bolt11\Encoder;
 
 use BitWasp\Bitcoin\Bitcoin;
+use BitWasp\Bitcoin\Network\Networks\BitcoinTestnet;
 use Jorijn\Bitcoin\Bolt11\Encoder\PaymentRequestDecoder;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidAmountException;
 use Jorijn\Bitcoin\Bolt11\Exception\InvalidPaymentRequestException;
@@ -21,6 +22,8 @@ use Jorijn\Bitcoin\Bolt11\Exception\PaymentRequestDecodeException;
 use Jorijn\Bitcoin\Bolt11\Exception\SignatureIncorrectOrMissingException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet;
 use PHPUnit\Framework\TestCase;
 
 use function BitWasp\Bech32\decodeRaw;
@@ -428,6 +431,91 @@ final class PaymentRequestDecoderTest extends TestCase
                 InvalidAmountException::class,
             ],
         ];
+    }
+
+    /**
+     * Signed with the private key of the BOLT #11 examples, so the payee is
+     * 03e7156a...; generated for this test because the spec has no vectors for
+     * these networks. The expected addresses were computed independently with
+     * the BIP 173 reference implementation and base58check.
+     *
+     * @covers ::convert
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::extractVerifyPublicKey
+     * @covers ::fallbackAddressParser
+     * @covers ::getNetworkFromPrefix
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     * @covers ::initializeTagParsers
+     * @covers ::parseTagsFromWords
+     * @covers ::tagsContainItem
+     * @covers ::tagsItems
+     * @covers ::wordsToBuffer
+     * @covers ::wordsToHex
+     * @covers ::wordsToIntBE
+     * @covers ::wordsToUtf8
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet
+     *
+     * @dataProvider provideSignetAndRegtestCases
+     */
+    public function testSignetAndRegtest(string $invoice, string $expectedNetwork, ?int $expectedSatoshis, string $expectedFallbackAddress): void
+    {
+        $result = $this->decoder->decode($invoice);
+
+        self::assertInstanceOf($expectedNetwork, $result['network']);
+        self::assertSame($expectedSatoshis, $result['satoshis']);
+        self::assertSame('03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad', $result['payee_node_key']);
+
+        $fallbackAddresses = array_values(array_filter($result['tags'], static function (array $tag): bool {
+            return 'fallback_address' === $tag['tag_name'];
+        }));
+        self::assertSame($expectedFallbackAddress, $fallbackAddresses[0]['data']['address']);
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string, null|int, string}>
+     */
+    public static function provideSignetAndRegtestCases(): iterable
+    {
+        yield 'signet (lntbs), P2WPKH fallback' => [
+            'lntbs10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqavfhkcap3xys8x6t8dejhggr5v4ehgfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksxzgmshyrqjzcv752mutp5v6fksvrhpxj6ygjl30xdnuqnckmua4hx7numzz2z0zlemr82ylzxnpwq4pawgljtv7ncpjmarhhdjd20spcc7t80',
+            BitcoinSignet::class,
+            1000,
+            'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+        ];
+
+        // bitwasp/bitcoin's own regtest network would give tb1q... here.
+        yield 'regtest (lnbcrt), P2WPKH fallback' => [
+            'lnbcrt10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqlvfhkcap3xys8yet8w3jhxapqw3jhxaqfppqw508d6qejxtdg4y5r3zarvary0c5xw7kc0x2xaw0tffy8ke4d2fchgu35q2zrzy83j4l664acp4s43m7mt38dzaqhgd2vaecln9yz8zk55u60a3z8ea8v2zy70x2r3kefl7llqqp2rw8yn',
+            BitcoinRegtest::class,
+            1000,
+            'bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080',
+        ];
+
+        yield 'regtest (lnbcrt) without amount, P2PKH fallback' => [
+            'lnbcrt1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdpqvfhkcap3xys8yet8w3jhxapqwqe8q6mgfpp3x9et2e20v6pu37c5d9vax37wxq72un982p5k8dzmvyz9rjt0a90r5p76nhpdfmnh9u6vvl6nc9gs93uhz9wsa8sf652834zz36594h9d33g8ff8wz0m8z40uhmdtze98epdrc8qqgrkl3m',
+            BitcoinRegtest::class,
+            null,
+            'mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP',
+        ];
+    }
+
+    /**
+     * @covers ::decode
+     * @covers ::decodePaymentRequest
+     * @covers ::getNetworkFromPrefix
+     *
+     * @uses \Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet
+     */
+    public function testSignetIsNotMistakenForTestnet(): void
+    {
+        // Signet shares testnet's address format, but not its coins.
+        $result = $this->decoder->decode('lntbs10u1pj48ugqpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqavfhkcap3xys8x6t8dejhggr5v4ehgfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksxzgmshyrqjzcv752mutp5v6fksvrhpxj6ygjl30xdnuqnckmua4hx7numzz2z0zlemr82ylzxnpwq4pawgljtv7ncpjmarhhdjd20spcc7t80');
+
+        self::assertNotInstanceOf(BitcoinTestnet::class, $result['network']);
     }
 
     /**

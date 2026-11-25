@@ -37,6 +37,8 @@ use Jorijn\Bitcoin\Bolt11\Exception\UnableToDecodeBech32Exception;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownFallbackAddressVersionException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnknownNetworkVersionException;
 use Jorijn\Bitcoin\Bolt11\Exception\UnrecoverableSignatureException;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinRegtest;
+use Jorijn\Bitcoin\Bolt11\Network\BitcoinSignet;
 
 use function BitWasp\Bech32\decodeRaw;
 use function BitWasp\Bech32\encode;
@@ -362,6 +364,12 @@ class PaymentRequestDecoder
 
             case 'tb':
                 return new BitcoinTestnet();
+
+            case 'tbs':
+                return new BitcoinSignet();
+
+            case 'bcrt':
+                return new BitcoinRegtest();
 
             default:
                 throw new UnknownNetworkVersionException('unknown network for invoice');
