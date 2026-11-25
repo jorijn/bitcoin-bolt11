@@ -108,6 +108,8 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 | `deps: allow protonlabs/bitcoin ^2.0`                              | patch release, under Dependencies              |
 | `docs:`, `test:`, `ci:`, `build:`, `chore:`, `refactor:`, `style:` | no release, not in the changelog               |
 
+With a squash merge, the pull request title becomes the commit message, so the title needs the type (`fix: …`, `feat: …`); the commit messages inside the pull request are then ignored. With a merge commit, release-please reads every commit in the pull request instead.
+
 After each push to `master`, release-please keeps one open pull request up to date with the next version and its CHANGELOG entry. Merging that pull request tags the version, publishes the GitHub release, and Packagist picks up the tag.
 
 ## Thanks
