@@ -9,6 +9,7 @@ Decodes and verifies Lightning payment requests into immutable PHP objects:
 
 * [BOLT #11](https://github.com/lightning/bolts/blob/master/11-payment-encoding.md) invoices (`lnbc1...`): checks the bech32 checksum and the secp256k1 signature.
 * [BOLT #12](https://github.com/lightning/bolts/blob/master/12-offer-encoding.md) offers (`lno1...`), invoice requests (`lnr1...`) and invoices (`lni1...`): checks the TLV encoding and the BIP-340 Schnorr signature. See [BOLT #12](#bolt-12-offers-invoice-requests-and-invoices).
+* BOLT #12 payer proofs (`lnp1...`): verifies that a payer paid an invoice, from the fields the payer chose to show. See [Payer proofs](#payer-proofs).
 
 Both enforce the rules the specifications set for readers, and pass every [official test vector](tests/Fixtures/README.md).
 
@@ -197,7 +198,36 @@ Some rules depend on context it does not have, so they are yours:
 
 An invoice request without an offer (a refund, say) is published by its sender, and the specification tells that writer not to sign it. The decoder accepts such a request without a signature, and verifies the signature when there is one. A request for an offer must always be signed.
 
-Payer proofs (`lnp1...`) are not supported yet.
+### Payer proofs
+
+A payer proof (`lnp1...`) shows that someone paid a BOLT #12 invoice, for instance to a shop's support desk. The payer chooses which invoice fields to show and hides the rest, such as a delivery address in the payer note. `PayerProofDecoder` checks three things, each of which the proof needs:
+
+* the node's signature over the invoice, rebuilt from the shown fields and the hashes of the hidden ones;
+* the preimage against the payment hash: the node only gives it out for the payment, so holding it shows the invoice was paid;
+* the payer's signature over the proof, with the key the invoice was requested with, so a proof cannot be made by someone who only saw the preimage.
+
+```php
+use Jorijn\Bitcoin\Bolt12\PayerProofDecoder;
+
+$proof = (new PayerProofDecoder())->decode($lnp);
+
+$proof->getNodeId();           // the key that signed the invoice: check it is the node you expect
+$proof->getPayerId();          // the key that paid
+$proof->getPaymentHash();
+$proof->getNote();             // text the payer added to the proof, signed by the payer
+$proof->getAmount();           // millisatoshis, or null when the payer did not show it
+$proof->getDescription();      // the offer's description, or null
+$proof->getDisclosedFields();  // every shown invoice field, hex by TLV type
+```
+
+A valid proof says that the holder of `getPayerId()` paid an invoice signed by `getNodeId()`. Two things are left to you:
+
+* **Whose node it is.** Anyone can run a node and pay themselves. Check that `getNodeId()` is the node you expect, such as your own.
+* **Whether the proof was made for you.** A proof can be passed on. To be sure the payer made it now, ask for a note of your choosing (a nonce, a ticket number) and check `getNote()`.
+
+The getters for optional fields return `null` both when the invoice did not have the field and when the payer hid it; the proof cannot tell those apart. Invoice features are reported but not enforced: the invoice was paid, so a feature this library does not know does not make the proof less true. Beyond the reader rules of the specification, the decoder also rejects a proof whose shown fields an invoice reader would have refused: an `offer_issuer_id` that is not the `invoice_node_id`, and an `invoice_amount` that differs from the `invreq_amount`. Without the first check, a payer could pay a node of their own and "prove" they paid someone else's offer.
+
+Payer proofs are the newest part of BOLT #12 (merged in July 2026). Core Lightning writes them with `createproof`. Where the specification contradicts itself on numbering a hidden field after field 239, this decoder follows Core Lightning. `Bolt12Decoder::decode()` does not accept payer proofs, because adding them to its return type would break existing callers. Making payer proofs is out of scope: it takes the payer's secret key, which belongs in a wallet.
 
 ### Handling invalid BOLT #12 strings
 

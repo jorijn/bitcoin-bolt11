@@ -20,10 +20,10 @@ use Jorijn\Bitcoin\Bolt12\Exception\InvalidEncodingException;
 use Jorijn\Bitcoin\Bolt12\Exception\InvalidFieldException;
 use Jorijn\Bitcoin\Bolt12\Exception\InvalidSignatureException;
 use Jorijn\Bitcoin\Bolt12\Exception\MalformedTlvException;
-use Jorijn\Bitcoin\Bolt12\Exception\UnknownRequiredFeatureException;
 use Jorijn\Bitcoin\Bolt12\Exception\UnknownRequiredFieldException;
 use Jorijn\Bitcoin\Bolt12\Internal\Bolt12String;
 use Jorijn\Bitcoin\Bolt12\Internal\ByteReader;
+use Jorijn\Bitcoin\Bolt12\Internal\FieldReader;
 use Jorijn\Bitcoin\Bolt12\Internal\MerkleTree;
 use Jorijn\Bitcoin\Bolt12\Internal\TlvRecord;
 use Jorijn\Bitcoin\Bolt12\Model\BlindedHop;
@@ -123,9 +123,6 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
     /** Invoice features this library knows: only multi-part payments so far. */
     private const KNOWN_INVOICE_FEATURES = [Features::MPP];
 
-    /** 9999-12-31T23:59:59Z: a later moment does not fit a four-digit year, and is no real expiry. */
-    private const MAX_TIMESTAMP = 253_402_300_799;
-
     public function decode(string $string): Invoice|InvoiceRequest|Offer
     {
         return $this->guard(function () use ($string): Invoice|InvoiceRequest|Offer {
@@ -135,6 +132,9 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
                 self::PREFIX_OFFER => $this->buildOffer($records),
                 self::PREFIX_INVOICE_REQUEST => $this->buildInvoiceRequest($records),
                 self::PREFIX_INVOICE => $this->buildInvoice($records),
+                // A payer proof needs its own checks and model, and adding it
+                // to decode()'s return type would break existing callers.
+                PayerProofDecoder::PREFIX => throw new InvalidEncodingException('payer proofs ("lnp1...") are decoded by PayerProofDecoder'),
                 default => throw new InvalidEncodingException(\sprintf('unknown BOLT #12 prefix "%s"', $prefix)),
             };
         });
@@ -284,11 +284,11 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
         $relativeExpiry = isset($fields[self::INVOICE_RELATIVE_EXPIRY])
             ? $this->truncated($fields[self::INVOICE_RELATIVE_EXPIRY], 4)
             : Invoice::DEFAULT_RELATIVE_EXPIRY;
-        if ($createdAt > self::MAX_TIMESTAMP - $relativeExpiry) {
+        if ($createdAt > FieldReader::MAX_TIMESTAMP - $relativeExpiry) {
             throw new InvalidFieldException('invoice expiry is out of range');
         }
 
-        $nodeId = $this->point($fields[self::INVOICE_NODE_ID], 'invoice_node_id');
+        $nodeId = FieldReader::point($fields[self::INVOICE_NODE_ID], 'invoice_node_id');
 
         // An invoice for an offer with an issuer id must come from that key;
         // otherwise anyone could answer a request with their own invoice.
@@ -297,13 +297,13 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
             throw new InvalidFieldException('invoice_node_id is not the offer_issuer_id');
         }
 
-        $features = $this->features($fields[self::INVOICE_FEATURES] ?? null, 'invoice_features', self::KNOWN_INVOICE_FEATURES);
+        $features = FieldReader::features($fields[self::INVOICE_FEATURES] ?? null, 'invoice_features', self::KNOWN_INVOICE_FEATURES);
 
         if (null === $signatureRecord) {
             throw new InvalidSignatureException('invoice has no signature');
         }
 
-        $signature = $this->signature($signatureRecord);
+        $signature = FieldReader::signature($signatureRecord);
         $this->verifySignature($records, 'invoice', $signature, $nodeId);
 
         return new Invoice(
@@ -311,7 +311,7 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
             $this->paymentPaths($fields[self::INVOICE_PATHS] ?? null, $fields[self::INVOICE_BLINDEDPAY] ?? null),
             $createdAt,
             $relativeExpiry,
-            $this->fixed($fields[self::INVOICE_PAYMENT_HASH], 32, 'invoice_payment_hash'),
+            FieldReader::fixed($fields[self::INVOICE_PAYMENT_HASH], 32, 'invoice_payment_hash'),
             $amount,
             $this->fallbackAddresses($fields[self::INVOICE_FALLBACKS] ?? null, $request->getChain()),
             $features,
@@ -395,15 +395,15 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
         return new Offer(
             $chains,
             isset($fields[self::OFFER_METADATA]) ? bin2hex($fields[self::OFFER_METADATA]->value) : null,
-            $this->text($fields[self::OFFER_CURRENCY] ?? null, 'offer_currency'),
+            FieldReader::text($fields[self::OFFER_CURRENCY] ?? null, 'offer_currency'),
             isset($fields[self::OFFER_AMOUNT]) ? $this->truncated($fields[self::OFFER_AMOUNT], 8) : null,
-            $this->text($fields[self::OFFER_DESCRIPTION] ?? null, 'offer_description'),
-            $this->features($fields[self::OFFER_FEATURES] ?? null, 'offer_features'),
-            isset($fields[self::OFFER_ABSOLUTE_EXPIRY]) ? $this->timestamp($fields[self::OFFER_ABSOLUTE_EXPIRY], 'offer_absolute_expiry') : null,
+            FieldReader::text($fields[self::OFFER_DESCRIPTION] ?? null, 'offer_description'),
+            FieldReader::features($fields[self::OFFER_FEATURES] ?? null, 'offer_features'),
+            isset($fields[self::OFFER_ABSOLUTE_EXPIRY]) ? FieldReader::timestamp($fields[self::OFFER_ABSOLUTE_EXPIRY], 'offer_absolute_expiry') : null,
             $this->blindedPaths($fields[self::OFFER_PATHS] ?? null, 'offer_paths'),
-            $this->text($fields[self::OFFER_ISSUER] ?? null, 'offer_issuer'),
+            FieldReader::text($fields[self::OFFER_ISSUER] ?? null, 'offer_issuer'),
             isset($fields[self::OFFER_QUANTITY_MAX]) ? $this->truncated($fields[self::OFFER_QUANTITY_MAX], 8) : null,
-            isset($fields[self::OFFER_ISSUER_ID]) ? $this->point($fields[self::OFFER_ISSUER_ID], 'offer_issuer_id') : null,
+            isset($fields[self::OFFER_ISSUER_ID]) ? FieldReader::point($fields[self::OFFER_ISSUER_ID], 'offer_issuer_id') : null,
             $unknownFields,
         );
     }
@@ -450,7 +450,7 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
         $offer = $this->parseOffer($fields, $offerUnknown);
         $isForOffer = null !== $offer->getIssuerId() || [] !== $offer->getPaths();
 
-        $chain = isset($fields[self::INVREQ_CHAIN]) ? $this->fixed($fields[self::INVREQ_CHAIN], 32, 'invreq_chain') : null;
+        $chain = isset($fields[self::INVREQ_CHAIN]) ? FieldReader::fixed($fields[self::INVREQ_CHAIN], 32, 'invreq_chain') : null;
         $amount = isset($fields[self::INVREQ_AMOUNT]) ? $this->truncated($fields[self::INVREQ_AMOUNT], 8) : null;
         $quantity = isset($fields[self::INVREQ_QUANTITY]) ? $this->truncated($fields[self::INVREQ_QUANTITY], 8) : null;
 
@@ -476,13 +476,13 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
             bin2hex($fields[self::INVREQ_METADATA]->value),
             $chain,
             $amount,
-            $this->features($fields[self::INVREQ_FEATURES] ?? null, 'invreq_features'),
+            FieldReader::features($fields[self::INVREQ_FEATURES] ?? null, 'invreq_features'),
             $quantity,
-            $this->point($fields[self::INVREQ_PAYER_ID], 'invreq_payer_id'),
-            $this->text($fields[self::INVREQ_PAYER_NOTE] ?? null, 'invreq_payer_note'),
+            FieldReader::point($fields[self::INVREQ_PAYER_ID], 'invreq_payer_id'),
+            FieldReader::text($fields[self::INVREQ_PAYER_NOTE] ?? null, 'invreq_payer_note'),
             $this->blindedPaths($fields[self::INVREQ_PATHS] ?? null, 'invreq_paths'),
             isset($fields[self::INVREQ_BIP_353_NAME]) ? $this->bip353Name($fields[self::INVREQ_BIP_353_NAME]) : null,
-            isset($fields[self::SIGNATURE]) ? $this->signature($fields[self::SIGNATURE]) : null,
+            isset($fields[self::SIGNATURE]) ? FieldReader::signature($fields[self::SIGNATURE]) : null,
             $requestUnknown,
         );
     }
@@ -698,49 +698,6 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
     }
 
     /**
-     * @param list<int> $known even bits the reader understands
-     */
-    private function features(?TlvRecord $record, string $name, array $known = []): Features
-    {
-        if (null === $record) {
-            return new Features();
-        }
-
-        // Minimal encoding: no leading zero bytes, so each set of features
-        // has exactly one encoding.
-        if ('' !== $record->value && "\0" === $record->value[0]) {
-            throw new InvalidFieldException(\sprintf('%s is not minimally encoded', $name));
-        }
-
-        $features = Features::fromBytes($record->value);
-        $unknown = $features->getUnknownRequiredBits($known);
-        if ([] !== $unknown) {
-            throw new UnknownRequiredFeatureException(\sprintf('%s requires unknown feature bits %s', $name, implode(', ', $unknown)), $unknown);
-        }
-
-        return $features;
-    }
-
-    /**
-     * BOLT #1 strings: valid UTF-8 without control, format, surrogate or
-     * private-use characters, or line and paragraph separators. These could
-     * hide text from the user or change how the rest of it reads.
-     */
-    private function text(?TlvRecord $record, string $name): ?string
-    {
-        if (null === $record) {
-            return null;
-        }
-
-        // preg_match() returns false, not 1, on invalid UTF-8 with the u flag.
-        if (0 !== preg_match('/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\x{2028}\x{2029}]/u', $record->value)) {
-            throw new InvalidFieldException(\sprintf('%s is not valid UTF-8 text', $name));
-        }
-
-        return $record->value;
-    }
-
-    /**
      * BIP 353 names may only use letters, digits, "-", "_" and ".".
      */
     private function bip353Name(TlvRecord $record): string
@@ -767,54 +724,7 @@ final class Bolt12Decoder implements Bolt12DecoderInterface
 
     private function truncated(TlvRecord $record, int $maxBytes): int
     {
-        try {
-            return (new ByteReader($record->value))->readTruncated($maxBytes);
-        } catch (\InvalidArgumentException $exception) {
-            throw new MalformedTlvException(\sprintf('%s: %s', $this->fieldName($record->type), $exception->getMessage()), 0, $exception);
-        }
-    }
-
-    private function timestamp(TlvRecord $record, string $name): int
-    {
-        $timestamp = $this->truncated($record, 8);
-        if ($timestamp > self::MAX_TIMESTAMP) {
-            throw new InvalidFieldException(\sprintf('%s is out of range', $name));
-        }
-
-        return $timestamp;
-    }
-
-    /**
-     * @return string hex
-     */
-    private function fixed(TlvRecord $record, int $length, string $name): string
-    {
-        if (\strlen($record->value) !== $length) {
-            throw new MalformedTlvException(\sprintf('%s must be %d bytes', $name, $length));
-        }
-
-        return bin2hex($record->value);
-    }
-
-    /**
-     * @return string hex, a 33-byte compressed public key
-     */
-    private function point(TlvRecord $record, string $name): string
-    {
-        $key = $this->fixed($record, 33, $name);
-        if (!Secp256k1::isValidPublicKey($record->value)) {
-            throw new InvalidFieldException(\sprintf('%s is not a valid public key', $name));
-        }
-
-        return $key;
-    }
-
-    /**
-     * @return string hex, 64 bytes
-     */
-    private function signature(TlvRecord $record): string
-    {
-        return $this->fixed($record, 64, 'signature');
+        return FieldReader::truncated($record, $maxBytes, $this->fieldName($record->type));
     }
 
     private function fieldName(int $type): string
