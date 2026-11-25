@@ -1,0 +1,30 @@
+name: Release
+
+# Every push to master lets release-please update one standing "release PR"
+# with the next version number and CHANGELOG entry, derived from the
+# Conventional Commit messages since the last tag. Merging that PR is the
+# release: release-please then tags vX.Y.Z and publishes the GitHub release,
+# and Packagist picks the new tag up through its webhook.
+# Configuration: release-please-config.json and .release-please-manifest.json.
+on:
+  push:
+    branches: [ master ]
+
+# Two quick pushes must not race each other on the same release PR or tag,
+# but a running release must not be cancelled halfway either.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write       # push the release branch, create tags and releases
+  pull-requests: write  # open and update the release PR
+  issues: write         # labels such as "autorelease: pending" use the issues API
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit rather than a tag because this job holds a token that
+      # can write tags and releases; Dependabot keeps the pin up to date.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0

@@ -4,8 +4,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [v1.1.0] - 2026-11-25
 A maintenance release without breaking changes: existing code keeps working as it is.
 
@@ -65,7 +63,6 @@ The project has been around for nearly two years now, so I'm bumping the version
 ## [v0.1.0] - 2021-01-26
 First version
 
-[Unreleased]: https://github.com/Jorijn/bitcoin-bolt11/compare/v1.1.0...HEAD
 [v1.1.0]: https://github.com/Jorijn/bitcoin-bolt11/compare/v1.0.1...v1.1.0
 [v1.0.1]: https://github.com/Jorijn/bitcoin-bolt11/compare/v1.0.0...v1.0.1
 [v1.0.0]: https://github.com/Jorijn/bitcoin-bolt11/compare/v0.2.0...v1.0.0
