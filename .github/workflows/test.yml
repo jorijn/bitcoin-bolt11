@@ -17,26 +17,14 @@ jobs:
   tests:
     name: PHP ${{ matrix.php }} (${{ matrix.dependencies }})
     runs-on: ubuntu-latest
-    # PHP 8.4+ deprecates implicitly nullable parameters, which src/ still has
-    # and which make PHPUnit mark two tests as risky. Until that is fixed in
-    # v1.1 these versions report, but do not block.
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        php: [ '7.4', '8.0', '8.1', '8.2', '8.3' ]
+        php: [ '7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5', '8.6' ]
         # "lowest" proves the lower bounds in composer.json actually work;
         # "highest" is what a fresh `composer require` gives a user today.
         # Without a committed lock file, these two are what consumers get.
         dependencies: [ lowest, highest ]
-        experimental: [ false ]
-        include:
-          - { php: '8.4', dependencies: lowest, experimental: true }
-          - { php: '8.4', dependencies: highest, experimental: true }
-          - { php: '8.5', dependencies: lowest, experimental: true }
-          - { php: '8.5', dependencies: highest, experimental: true }
-          - { php: '8.6', dependencies: lowest, experimental: true }
-          - { php: '8.6', dependencies: highest, experimental: true }
 
     steps:
       - uses: actions/checkout@v4
@@ -55,12 +43,14 @@ jobs:
         run: vendor/bin/phpunit --testdox
 
   spec-known-failures:
-    # Official BOLT #11 vectors the library currently gets wrong. Expected to
-    # fail until the fixes from the modernisation plan land; it is here so the
-    # count stays visible on every PR. Shrinking it is progress.
-    name: Spec vectors (known failures, non-blocking)
+    # Official BOLT #11 vectors the library currently gets wrong (see
+    # KNOWN_FAILURES in tests/Spec/Bolt11TestVectorsTest.php). These tests are
+    # expected to fail, so a plain phpunit run would put a permanent red check
+    # on every PR. Instead this job reports the count in the run summary and
+    # only fails when a known failure starts passing: then a fix has landed and
+    # its vector must move into the gated suite, or it could regress unnoticed.
+    name: Spec vectors (known failures)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -69,7 +59,22 @@ jobs:
           extensions: bcmath, gmp, mbstring
           coverage: none
       - uses: ramsey/composer-install@v3
-      - run: vendor/bin/phpunit --group spec-known-failure --testdox
+      - name: Run known-failing vectors
+        run: |
+          # Failing tests are the expected outcome here; the check below decides.
+          vendor/bin/phpunit --group spec-known-failure --log-junit known-failures.xml || true
+          php -r '
+            $suite = simplexml_load_file("known-failures.xml")->testsuite;
+            $total = (int) $suite["tests"];
+            $failing = (int) $suite["failures"] + (int) $suite["errors"];
+            $summary = sprintf("BOLT #11 spec vectors still failing: %d of %d known failures (%d now pass)\n", $failing, $total, $total - $failing);
+            file_put_contents(getenv("GITHUB_STEP_SUMMARY"), $summary, FILE_APPEND);
+            echo $summary;
+            if (0 === $total || $failing < $total) {
+                fwrite(STDERR, "::error::A known-failing spec vector now passes (or none ran). Remove it from KNOWN_FAILURES so it is gated.\n");
+                exit(1);
+            }
+          '
 
   static-analysis:
     name: PHPStan and code style

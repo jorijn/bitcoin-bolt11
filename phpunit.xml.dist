@@ -18,7 +18,8 @@
     </testsuites>
 
     <!-- Official spec vectors the library still gets wrong; run them with
-         `composer test:spec-known-failures` (non-blocking job in CI). -->
+         `composer test:spec-known-failures`; CI reports them and fails only
+         once one of them starts passing. -->
     <groups>
         <exclude>
             <group>spec-known-failure</group>

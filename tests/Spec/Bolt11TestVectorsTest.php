@@ -69,8 +69,9 @@ final class Bolt11TestVectorsTest extends TestCase
     }
 
     /**
-     * Not part of the default suite (excluded in phpunit.xml.dist); CI runs it
-     * as a non-blocking job so progress towards full compliance stays visible.
+     * Not part of the default suite (excluded in phpunit.xml.dist). CI runs it
+     * in a separate job that reports how many still fail, and fails only once
+     * one of them passes, so a fixed vector gets moved into the gate.
      *
      * @group spec-known-failure
      *
