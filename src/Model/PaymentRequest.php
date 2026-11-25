@@ -167,6 +167,25 @@ class PaymentRequest
         return null;
     }
 
+    /**
+     * Returns every tag with this name, in invoice order.
+     *
+     * Some fields may appear more than once: an invoice can carry several
+     * routing hints (`r`) and fallback addresses (`f`), and findTagByName()
+     * only ever returns the first of them.
+     *
+     * @return TagInterface[]
+     */
+    public function findTagsByName(string $name): array
+    {
+        return array_values(array_filter(
+            $this->getTags(),
+            static function (TagInterface $tag) use ($name): bool {
+                return $tag->getTagName() === $name;
+            }
+        ));
+    }
+
     public function getExpiryTimestamp(): ?int
     {
         return $this->expiryTimestamp;
