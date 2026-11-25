@@ -422,4 +422,49 @@ final class PaymentRequestDecoderTest extends TestCase
             ],
         ];
     }
+
+    /**
+     * The amount must not depend on the process-wide bcscale(), which the
+     * application or another library may have set.
+     *
+     * @covers ::decode
+     * @covers ::hrpToMillisat
+     * @covers ::hrpToSat
+     *
+     * @dataProvider provideAmountIsIndependentOfBcscaleCases
+     */
+    public function testAmountIsIndependentOfBcscale(string $invoice, int $expectedSatoshis, int $expectedMilliSatoshis): void
+    {
+        $originalScale = bcscale();
+
+        try {
+            bcscale(10);
+            $result = $this->decoder->decode($invoice);
+        } finally {
+            bcscale($originalScale);
+        }
+
+        self::assertSame($expectedSatoshis, $result['satoshis']);
+        self::assertSame($expectedMilliSatoshis, $result['milli_satoshis']);
+    }
+
+    /**
+     * @return iterable<string, array{string, int, int}>
+     */
+    public static function provideAmountIsIndependentOfBcscaleCases(): iterable
+    {
+        // A `p` amount used to be rejected as "outside valid range".
+        yield 'pico-bitcoin amount, fractional satoshis are truncated' => [
+            'lnbc9678785340p1pwmna7lpp5gc3xfm08u9qy06djf8dfflhugl6p7lgza6dsjxq454gxhj9t7a0sd8dgfkx7cmtwd68yetpd5s9xar0wfjn5gpc8qhrsdfq24f5ggrxdaezqsnvda3kkum5wfjkzmfqf3jkgem9wgsyuctwdus9xgrcyqcjcgpzgfskx6eqf9hzqnteypzxz7fzypfhg6trddjhygrcyqezcgpzfysywmm5ypxxjemgw3hxjmn8yptk7untd9hxwg3q2d6xjcmtv4ezq7pqxgsxzmnyyqcjqmt0wfjjq6t5v4khxxqyjw5qcqp2rzjq0gxwkzc8w6323m55m4jyxcjwmy7stt9hwkwe2qxmy8zpsgg7jcuwz87fcqqeuqqqyqqqqlgqqqqn3qq9qn07ytgrxxzad9hc4xt3mawjjt8znfv8xzscs7007v9gh9j569lencxa8xeujzkxs0uamak9aln6ez02uunw6rd2ht2sqe4hz8thcdagpleym0j',
+            967878,
+            967878534,
+        ];
+
+        // A whole number of satoshis used to lose its `satoshis` key.
+        yield 'whole satoshis' => [
+            'lnbc20u1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7ksp5m6kmam774klwlh4dhmhaatd7al02m0h0m6kmam774klwlh4dhmhs9qypqqqxqrrsscqpfck3fd5pdf7ermq4ajdr7eawzxzzspr8f2fqtw8kewj5f57l4uexxwgdy3xftzqm8a0yh7rnt6wsuzay8tqauq0cufzmamfu0y8zplhqpgpuvpj',
+            2000,
+            2000000,
+        ];
+    }
 }

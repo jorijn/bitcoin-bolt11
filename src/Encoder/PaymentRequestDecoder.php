@@ -236,11 +236,16 @@ class PaymentRequestDecoder
     {
         $milliSatoshis = $this->hrpToMillisat($hrpString);
 
-        if ('0.0000000000' === bcmod($milliSatoshis, self::DIVISORS['m'])) {
-            throw new InvalidAmountException('amount is outside of valid range');
-        }
-
-        return bcdiv($milliSatoshis, self::DIVISORS['m']);
+        // Every bcmath call in this class passes its scale explicitly. Without
+        // it, bcmath uses the process-wide bcscale(), which the application (or
+        // another library) may have changed; with bcscale(10) this method used to
+        // throw for every whole number of satoshis, so `satoshis` went missing.
+        //
+        // Scale 0 truncates to whole satoshis: what 1.x has always returned under
+        // PHP's default scale. A fractional amount is not rejected here (the
+        // check that used to sit here could never trigger at scale 0); use the
+        // millisatoshi amount when precision matters, see the README.
+        return bcdiv($milliSatoshis, self::DIVISORS['m'], 0);
     }
 
     public function hrpToMillisat(string $hrpString): string
@@ -259,13 +264,18 @@ class PaymentRequestDecoder
             throw new InvalidAmountException('not a valid human readable amount');
         }
 
+        // Explicit scales, see hrpToSat(). Under a global bcscale(10), bcmod()
+        // below returned "0.0000000000" instead of "0", so every invoice with a
+        // `p` amount was rejected. Scale 0 keeps the result identical to what
+        // 1.0 returned under PHP's default scale: whole millisatoshis.
         $valueBN = bcmul($value, '1', 10);
         $milliSatoshisBN = $divisor
-            ? bcdiv(bcmul($valueBN, self::MILLISATS_PER_BTC), self::DIVISORS[$divisor])
-            : bcmul($valueBN, self::MILLISATS_PER_BTC);
+            ? bcdiv(bcmul($valueBN, self::MILLISATS_PER_BTC, 0), self::DIVISORS[$divisor], 0)
+            : bcmul($valueBN, self::MILLISATS_PER_BTC, 0);
 
-        if (('p' === $divisor && '0' !== bcmod($valueBN, '10.0000000000'))
-            || 1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS)) {
+        // 1p is a tenth of a millisatoshi, so a `p` amount must be a multiple of 10.
+        if (('p' === $divisor && '0' !== bcmod($valueBN, '10', 0))
+            || 1 === bccomp($milliSatoshisBN, self::MAX_MILLISATS, 0)) {
             throw new InvalidAmountException('amount is outside valid range');
         }
 
