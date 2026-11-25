@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/jorijn/bitcoin-bolt11/compare/v1.1.0...v2.0.0) (2026-11-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* Invoices without a payment secret (`s` field) are now rejected. Decoding is strict by default and follows the current BOLT #11 specification exactly, so every invoice the specification tells a reader to reject now fails where 1.x accepted it, such as one with a missing or repeated description, a field of the wrong length or an unknown required feature bit. To read older invoices, for example for a payment history, use `new PaymentRequestDecoder(lenient: true)`, and decode in strict mode before paying. Further breaking changes: requires 64-bit PHP 8.3 or later with ext-gmp and has no other dependencies; `PaymentRequestDecoder::decode()` returns an immutable `PaymentRequest` in one step; the Encoder, Normalizer and Network namespaces, the Tag classes and the BitWasp types are gone. See UPGRADE-2.0.md for the full mapping.
+
+### Features
+
+* v2.0 with a dependency-free core on PHP 8.3 ([ce2f04f](https://github.com/jorijn/bitcoin-bolt11/commit/ce2f04f4c5c888da434e6c02227c6114a15307e5))
+
 ## [v1.1.0] - 2026-11-25
 A maintenance release without breaking changes: existing code keeps working as it is.
 
