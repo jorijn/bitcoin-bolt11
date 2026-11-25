@@ -41,6 +41,7 @@
     "php": "^7.4|^8.0",
     "ext-bcmath": "*",
     "ext-gmp": "*",
+    "ext-mbstring": "*",
     "bitwasp/bech32": "^0.0.1",
     "protonlabs/bitcoin": "^1.0.10"
   },
