@@ -1,0 +1,15 @@
+# Level 6 with a baseline: the existing findings are recorded in
+# phpstan-baseline.neon, so new code has to be clean from day one without
+# first fixing everything that is already there. Shrink the baseline as code
+# gets touched; v2.0 moves to level max without a baseline.
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 6
+    paths:
+        - src
+        - tests
+    # Analyse against the lowest supported PHP version, so PHPStan does not
+    # accept anything that would break on PHP 7.4.
+    phpVersion: 70400
